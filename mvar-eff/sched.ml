@@ -1,0 +1,50 @@
+open Effects
+
+type thread_id = int
+type 'a cont = Cont : ('a,unit) continuation * thread_id -> 'a cont
+
+type _ effect +=
+  | Fork    : (unit -> unit) -> unit effect
+  | Yield   : unit effect
+  | Suspend : ('a cont -> unit) -> 'a effect
+  | Resume  : 'a cont * 'a -> unit effect
+  | Get_Tid : int effect
+
+let fork f = perform (Fork f)
+let yield () = perform Yield
+
+let run main =
+
+  (* Thread ID *)
+  let cur_tid = ref (-1) in
+  let next_tid = ref 0 in
+
+  (* Run queue handling *)
+  let run_q = Queue.create () in
+  let enqueue t v tid =
+    Queue.push (fun () -> (cur_tid := tid; continue t v)) run_q in
+  let rec dequeue () =
+    if Queue.is_empty run_q then ()
+    else (Queue.pop run_q (); dequeue ()) in
+
+  let rec spawn f =
+    (cur_tid := !next_tid;
+    next_tid := !next_tid + 1;
+    handle scheduler f ())
+  and scheduler =
+    {return = (fun x -> x);
+    exn = (fun e -> raise e);
+    effect = fun (type a) (eff : a effect) (k : (a, unit) continuation) ->
+        match eff with
+        | Yield -> (enqueue k () !cur_tid; dequeue ())
+        | Fork f -> (enqueue k () !cur_tid; spawn f; dequeue ())
+        | Suspend f -> (f (Cont (k,!cur_tid)); dequeue ())
+        | Resume (Cont (k',tid),v) -> (enqueue k' v tid; continue k ())
+        | Get_Tid -> continue k !cur_tid
+        | _ -> delegate eff k}
+  in
+  spawn main
+
+let suspend f = perform (Suspend f)
+let resume (k,v) = perform (Resume (k,v))
+let get_tid () = perform Get_Tid
