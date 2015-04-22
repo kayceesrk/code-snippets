@@ -4,7 +4,7 @@ chameneos: chameneos-ghc chameneos-eff
 
 #Will only work with vanilla ocaml
 chameneos-systhr:
-	ocamlfind ocamlc -o chameneos-systhr -thread -package threads -linkpkg chameneos_orig.ml
+	ocamlfind ocamlc -o chameneos-systhr -thread -package threads -linkpkg chameneos_systhr.ml
 
 #Will only work with vanilla ocaml
 chameneos-lwt:
