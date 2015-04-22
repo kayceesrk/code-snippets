@@ -4,7 +4,12 @@ chameneos: chameneos-ghc chameneos-eff
 
 #Will only work with vanilla ocaml
 chameneos-systhr:
-	ocamlfind ocamlc -thread -package threads -linkpkg chameneos_orig.ml
+	ocamlfind ocamlc -o chameneos-systhr -thread -package threads -linkpkg chameneos_orig.ml
+
+#Will only work with vanilla ocaml
+chameneos-lwt:
+	ocamlfind ocamlc -o chameneos-lwt -thread -package lwt,lwt.unix,threads -linkpkg chameneos_lwt.ml
+
 
 chameneos-ghc:
 	ghc -o chameneos-ghc -cpp -XBangPatterns -XScopedTypeVariables \
@@ -20,4 +25,4 @@ MVar_test:
 
 clean:
 	rm -f *.cmi *.cmx a.out *~ eff *.cmo MVar_test chameneos-eff chameneos-ghc \
-	*.hi *.o cha chameneos-systhr
+	*.hi *.o chameneos-systhr chameneos-lwt
