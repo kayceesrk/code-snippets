@@ -6,6 +6,9 @@ open Sched
 
 let mv = new_empty_mvar ()
 
+let get_tid () = Effects.perform Get_Tid
+let fork f = Effects.perform @@ Fork f
+
 let put x =
   (printf "[Thread %d] Before put: %s\n" (get_tid ()) x;
   put_mvar x mv;

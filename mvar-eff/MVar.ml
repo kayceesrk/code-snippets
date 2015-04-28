@@ -8,8 +8,8 @@ end
 
 module type SCHED = sig
   type 'a cont
-  val suspend : ('a cont -> unit) -> 'a
-  val resume  : 'a cont * 'a -> unit
+  type 'a Effects.effect += Suspend : ('a cont -> unit) -> 'a Effects.effect
+  type 'a Effects.effect += Resume  : 'a cont * 'a -> unit Effects.effect
 end
 
 module Make (S : SCHED) : S = struct
@@ -27,25 +27,28 @@ module Make (S : SCHED) : S = struct
 
   let new_mvar v = ref (Full (v, Queue.create ()))
 
+  let suspend f = Effects.perform @@ S.Suspend f
+  let resume (a,b) = Effects.perform @@ S.Resume (a,b)
+
   let put_mvar v mv =
     match !mv with
-    | Full (v', q) -> S.suspend (fun k -> Queue.push (v,k) q)
+    | Full (v', q) -> suspend (fun k -> Queue.push (v,k) q)
     | Empty q ->
         if Queue.is_empty q then
           mv := Full (v, Queue.create ())
         else
           let t = Queue.pop q in
-          S.resume (t, v)
+          resume (t, v)
 
   let take_mvar mv =
     match !mv with
-    | Empty q -> S.suspend (fun k -> Queue.push k q)
+    | Empty q -> suspend (fun k -> Queue.push k q)
     | Full (v, q) ->
         if Queue.is_empty q then
           (mv := Empty (Queue.create ()); v)
         else
           let (v', t) = Queue.pop q in
           (mv := Full (v', q);
-           S.resume (t, ());
+           resume (t, ());
            v)
 end

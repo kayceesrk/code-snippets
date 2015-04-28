@@ -4,12 +4,14 @@ open Printf
 type thread_id = int
 type 'a cont = Cont : ('a,unit) continuation * thread_id -> 'a cont
 
-type _ effect +=
-  | Fork    : (unit -> unit) -> unit effect
-  | Yield   : unit effect
-  | Suspend : ('a cont -> unit) -> 'a effect
-  | Resume  : 'a cont * 'a -> unit effect
-  | Get_Tid : int effect
+type 'a effect = ..
+
+type _ Effects.effect +=
+  | Fork    : (unit -> unit) -> unit Effects.effect
+  | Yield   : unit Effects.effect
+  | Suspend : ('a cont -> unit) -> 'a Effects.effect
+  | Resume  : 'a cont * 'a -> unit Effects.effect
+  | Get_Tid : int Effects.effect
 
 let fork f = perform (Fork f)
 let yield () = perform Yield
@@ -35,7 +37,7 @@ let run main =
     and scheduler =
       {return = dequeue;
       exn = raise;
-      effect = fun (type a) (eff : a effect) (k : (a, unit) continuation) ->
+      effect = fun (type a) (eff : a Effects.effect) (k : (a, unit) continuation) ->
         match eff with
         | Yield ->
             enqueue k () !cur_tid;

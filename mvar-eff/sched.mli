@@ -1,24 +1,24 @@
 (** Represents a blocked computation that waits for a value of type 'a. *)
 type 'a cont
 
-(** [suspend f] applies [f] to the current continuation, and suspends the
+type _ Effects.effect += Suspend : ('a cont -> unit) -> 'a Effects.effect
+(** [Perform @@ Suspend f] applies [f] to the current continuation, and suspends the
     execution of the current thread, and switches to the next thread in the
     scheduler's queue. *)
-val suspend : ('a cont -> unit) -> 'a
 
-(** [resume (k,v)] prepares the suspended continuation [k] with value [v] and
+type _ Effects.effect += Resume : 'a cont * 'a -> unit Effects.effect
+(** [perform @@ Resume (k,v)] prepares the suspended continuation [k] with value [v] and
     enqueues it to the scheduler queue. *)
-val resume  : 'a cont * 'a -> unit
 
-(** [run f] runs [f] with the cooperative-threaded scheduler. *)
-val run : (unit -> unit) -> unit
+type _ Effects.effect += Fork : (unit -> unit) -> unit Effects.effect
+(** [perform @@ Fork f] forks [f] as a new thread to which control immediately switches to. *)
 
-(** [fork f] forks [f] as a new thread to which control immediately switches to. *)
-val fork : (unit -> unit) -> unit
-
-(** [yield ()] suspends the current thread and switches to the next thread from
+type _ Effects.effect += Yield : unit Effects.effect
+(** [perform Yield] suspends the current thread and switches to the next thread from
     the run queue. *)
-val yield : unit -> unit
 
-(** [get_tid ()] returns the current thread identifier. *)
-val get_tid : unit -> int
+type _ Effects.effect += Get_Tid : int Effects.effect
+(** [perform Get_Tid] returns the current thread identifier. *)
+
+val run : (unit -> unit) -> unit
+(** [run f] runs [f] with the cooperative-threaded scheduler. *)
