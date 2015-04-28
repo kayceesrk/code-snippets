@@ -43,13 +43,13 @@ let arrive (mpv : mp MVar.t) (finish : (int * int) MVar.t) (ch : chameneos) =
     let w = MVar.take_mvar mpv in
     match w with
     | Nobody 0 ->
-        (MVar.put_mvar w mpv;
-          MVar.put_mvar (t,b) finish)
+        MVar.put_mvar w mpv;
+        MVar.put_mvar (t,b) finish
     | Nobody q ->
-        (MVar.put_mvar (Somebody (q, ch, waker)) mpv;
-          go (t+1) @@ inc (MVar.take_mvar waker) b)
+         MVar.put_mvar (Somebody (q, ch, waker)) mpv;
+         go (t+1) @@ inc (MVar.take_mvar waker) b
     | Somebody (q, ch', waker') ->
-        let () = MVar.put_mvar (Nobody (q - 1)) mpv in
+        MVar.put_mvar (Nobody (q - 1)) mpv;
         let c'' = Color.complement !ch !ch' in
         ch := c'';
         ch' := c'';
