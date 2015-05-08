@@ -22,12 +22,12 @@ module type SCHED = sig
   type 'a cont
   (** Represents a blocked computation that waits for a value of type 'a. *)
 
-  type _ Effects.effect += Suspend : ('a cont -> unit) -> 'a Effects.effect
+  type _ eff += Suspend : ('a cont -> unit) -> 'a eff
   (** [perform @@ Suspend f] applies [f] to the current continuation, and suspends the
       execution of the current thread, and switches to the next thread in the
       scheduler's queue. *)
 
-  type _ Effects.effect += Resume  : 'a cont * 'a -> unit Effects.effect
+  type _ eff += Resume  : 'a cont * 'a -> unit eff
   (** [Perform @@ Resume (k,v)] prepares the suspended continuation [k] with value [v] and
       enqueues it to the scheduler queue. *)
 end

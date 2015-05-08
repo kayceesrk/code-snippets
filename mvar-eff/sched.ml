@@ -1,17 +1,14 @@
-open Effects
 open Printf
 
 type thread_id = int
 type 'a cont = Cont : ('a,unit) continuation * thread_id -> 'a cont
 
-type 'a effect = ..
-
-type _ Effects.effect +=
-  | Fork    : (unit -> unit) -> unit Effects.effect
-  | Yield   : unit Effects.effect
-  | Suspend : ('a cont -> unit) -> 'a Effects.effect
-  | Resume  : 'a cont * 'a -> unit Effects.effect
-  | Get_Tid : int Effects.effect
+type _ eff +=
+  | Fork    : (unit -> unit) -> unit eff
+  | Yield   : unit eff
+  | Suspend : ('a cont -> unit) -> 'a eff
+  | Resume  : 'a cont * 'a -> unit eff
+  | Get_Tid : int eff
 
 let fork f = perform (Fork f)
 let yield () = perform Yield
@@ -33,11 +30,11 @@ let run main =
     fun f x ->
       cur_tid := !next_tid;
       next_tid := !next_tid + 1;
-      handle scheduler f x
+      Effects.handle scheduler f x
     and scheduler =
       {return = dequeue;
       exn = raise;
-      effect = fun (type a) (eff : a Effects.effect) (k : (a, unit) continuation) ->
+      eff = fun (type a) (eff : a eff) (k : (a, unit) continuation) ->
         match eff with
         | Yield ->
             enqueue k () !cur_tid;
