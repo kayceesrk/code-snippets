@@ -25,4 +25,4 @@ MVar_test:
 
 clean:
 	rm -f *.cmi *.cmx a.out *~ eff *.cmo MVar_test chameneos-eff chameneos-ghc \
-	*.hi *.o chameneos-systhr chameneos-lwt
+	*.hi *.o chameneos-systhr chameneos-lwt *.annot

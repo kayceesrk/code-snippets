@@ -8,8 +8,8 @@ end
 
 module type SCHED = sig
   type 'a cont
-  type 'a eff += Suspend : ('a cont -> unit) -> 'a eff
-  type 'a eff += Resume  : 'a cont * 'a -> unit eff
+  effect Suspend : ('a cont -> unit) -> 'a
+  effect Resume  : 'a cont * 'a -> unit
 end
 
 module Make (S : SCHED) : S = struct
@@ -27,8 +27,8 @@ module Make (S : SCHED) : S = struct
 
   let new_mvar v = ref (Full (v, Queue.create ()))
 
-  let suspend f = Effects.perform @@ S.Suspend f
-  let resume (a,b) = Effects.perform @@ S.Resume (a,b)
+  let suspend f = perform @@ S.Suspend f
+  let resume (a,b) = perform @@ S.Resume (a,b)
 
   let put_mvar v mv =
     match !mv with

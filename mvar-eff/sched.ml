@@ -33,23 +33,23 @@ let run main =
       Effects.handle scheduler f x
     and scheduler =
       {return = dequeue;
-      exn = raise;
-      eff = fun (type a) (eff : a eff) (k : (a, unit) continuation) ->
-        match eff with
-        | Yield ->
-            enqueue k () !cur_tid;
-            dequeue ()
-        | Fork f ->
-            enqueue k () !cur_tid;
-            spawn f ()
-        | Suspend f ->
-            f (Cont (k,!cur_tid));
-            dequeue ()
-        | Resume(Cont (k',tid), v) ->
-            enqueue k' v tid;
-            continue k ()
-        | Get_Tid -> continue k !cur_tid
-        | _ -> delegate eff k}
+       exn = raise;
+       eff = fun (type a) (eff : a eff) (k : (a, unit) continuation) ->
+         match eff with
+         | Yield ->
+             enqueue k () !cur_tid;
+             dequeue ()
+         | Fork f ->
+             enqueue k () !cur_tid;
+             spawn f ()
+         | Suspend f ->
+             f (Cont (k,!cur_tid));
+             dequeue ()
+         | Resume(Cont (k',tid), v) ->
+             enqueue k' v tid;
+             continue k ()
+         | Get_Tid -> continue k !cur_tid
+         | _ -> delegate eff k}
   in
   spawn main ()
 
