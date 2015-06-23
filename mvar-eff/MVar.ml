@@ -74,19 +74,43 @@ module Make (S : SCHED) : S = struct
     | Empty q -> suspend (fun k -> Queue.push (ref(Some(Stack k))) q)
     | Full (v, q) -> clean q; v
 
-  type ('a,'b) reagent =
-    {pollFn  : unit -> bool;
-     blockFn : 'a -> 'b offer -> 'b;
-     doFn    : 'a -> 'b}
+  type ('a,'b) poll_result =
+  | Block of ('a -> 'b offer -> 'b)
+  | Do of ('a -> 'b)
 
-  let (>>) r1 r2 =
-    {pollFn  : r1.pollFn () && r2.pollFn ();
-     blockFn : fun a k -> ;
-     doFn    : fun
+  type ('a,'b) reagent = unit -> ('a,'b) poll_result
 
-  let (+) r1 r2 = failwith "not implemented"
+  let (+) r1 r2 = fun () ->
+    match r1 () with
+    | Do df1 -> Do df1
+    | Block bf1 ->
+        match r2 () with
+        | Do df2 -> Do df2
+        | Block bf2 ->
+            Block (fun a o -> bf1 a (ref (Some (Fun (fun b -> bf2 b o)))))
 
-  let (!) r v = failwith "not implemented"
+  let (>>) (r1 : ('a,'b) reagent) (r2 : ('b,'c) reagent) : ('a, 'c) reagent = fun () ->
+    match r1 () with
+    | Do df1 ->
+        begin
+          match r2 () with
+          | Do df2 -> Do (fun a -> df2 (df1 a))
+          | Block bf2 -> Block (fun a o -> bf2 (df1 a) o)
+        end
+    | Block bf1 -> Block (fun a o -> bf1 a (ref (Some (Fun (fun b ->
+        match r2 () with
+        | Do df2 ->
+            begin
+              match !o with
+              | Some k -> resume (df2 b) k
+              | None -> failwith ">> : impossible"
+            end
+        | Block bf2 -> bf2 b o)))))
+
+  let (!) r v =
+    match r () with
+    | Do d -> d v
+    | Block b -> suspend (fun k -> b v (ref @@ Some (Stack k)))
 
   let take_mvar_evt = failwith "not implemented"
 
