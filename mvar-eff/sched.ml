@@ -32,7 +32,7 @@ let run main =
       next_tid := !next_tid + 1;
       Effects.handle scheduler f x
     and scheduler =
-      {return = dequeue;
+      {Effects.return = dequeue;
        exn = raise;
        eff = fun (type a) (eff : a eff) (k : (a, unit) continuation) ->
          match eff with

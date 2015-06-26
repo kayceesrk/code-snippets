@@ -23,11 +23,13 @@ end
 
 module Make (S : SCHED) : S = struct
 
-  type 'a cont =
-    | Fun of ('a -> unit)
-    | Stack of 'a S.cont
+  type 'a offer = 'a S.cont option ref
 
-  type 'a offer = 'a cont option ref
+  type (_,_) poll_result =
+  | Do : ('a -> 'b) -> ('a,'b) poll_result
+  | Block : ('a * ('b,'c) reagent * 'c offer -> 'c) -> ('a,'b) poll_result
+
+  and ('a,'b) reagent = unit -> ('a,'b) poll_result
 
   (** The state of mvar is either [Full v q] filled with value [v] and a queue
       [q] of threads waiting to fill the mvar, or [Empty q], with a queue [q] of
@@ -73,12 +75,6 @@ module Make (S : SCHED) : S = struct
     match !mv with
     | Empty q -> suspend (fun k -> Queue.push (ref(Some(Stack k))) q)
     | Full (v, q) -> clean q; v
-
-  type ('a,'b) poll_result =
-  | Block of ('a -> 'b offer -> 'b)
-  | Do of ('a -> 'b)
-
-  type ('a,'b) reagent = unit -> ('a,'b) poll_result
 
   let (+) r1 r2 = fun () ->
     match r1 () with
