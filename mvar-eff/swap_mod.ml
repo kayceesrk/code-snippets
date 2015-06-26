@@ -17,6 +17,14 @@ module type SCHED = sig
   effect Resume  : 'a cont * 'a -> unit
 end
 
+let is_some = function
+  | Some _ -> true
+  | None -> false
+
+let is_none = function
+  | None -> true
+  | Some _ -> false
+
 module Make (Sched : SCHED) : S = struct
 
   module Offer = struct
@@ -55,6 +63,8 @@ module Make (Sched : SCHED) : S = struct
          | Offer.Fulfilled -> ()
          | Offer.Pending k -> perform @@ Sched.Resume (k, None))}::r
 
+    let append r1 r2 = r1 @ r2
+
     exception CommitFail
 
     let rec ensurePending = function
@@ -79,14 +89,8 @@ module Make (Sched : SCHED) : S = struct
     { tryReact : 'a -> Reaction.t -> 'b Offer.t option -> 'b option * Reaction.t;
       seq : 'c. ('b,'c) reagent -> ('a,'c) reagent }
 
-  type ('b,'r) message_cont =
-    { senderK : ('b,'r) reagent;
-      offer   : 'r Offer.t }
-
   type ('a,'b) message =
-    { payload  : 'a;
-      senderRx : Reaction.t;
-      cont     : 'r. ('b,'r) message_cont }
+    Message : 'a * Reaction.t * ('b,'r) reagent * 'r Offer.t -> ('a,'b) message
 
   type ('a,'b) endpoint =
     {outgoing: ('a,'b) message Queue.t;
@@ -100,7 +104,7 @@ module Make (Sched : SCHED) : S = struct
 
   let rec clean q =
     try
-      let {cont = {offer;_}; _} = Queue.peek q in
+      let Message (_,_,_,offer) = Queue.peek q in
       if Offer.is_pending offer
       then q
       else (ignore (Queue.pop q); clean q)
@@ -127,22 +131,44 @@ module Make (Sched : SCHED) : S = struct
       | None -> withOffer ()
     in withoutOffer ()
 
-  let swap_internal (type a) (type b) (type r) (ep : (a,b) endpoint) (k : (b,r) reagent) =
+  let swap_internal ep k =
     let {outgoing; incoming} = ep in
     let seq next = k.seq next in
+    let swapK dualPayload dualOffer =
+      {seq = failwith "impossible";
+       tryReact = fun s rx my_offer ->
+         k.tryReact dualPayload (Reaction.add rx dualOffer s) my_offer}
+    in
     let tryReact a rx offer =
-      match offer with
-      | None -> ()
-      | Some offer ->
-          let cont : (b,r) message_cont = {senderK = k; offer} in
-          Queue.push outgoing {payload = a; senderRx = rx; cont};
-      failwith "not implemented"
+      let () =
+        match offer with
+        | None -> ()
+        | Some offer -> Queue.push (Message (a,rx,k,offer)) outgoing
+      in
+      match clean_and_pop incoming with
+      | None ->
+          assert (is_some offer);
+          (None, rx)
+      | Some (Message (a',rx',k',offer')) ->
+          assert (is_none offer);
+          let merged = k'.seq (swapK a' offer') in
+          merged.tryReact a (Reaction.append rx rx') offer
     in
     {seq; tryReact}
+
+  let (>>) r1 r2 = r1.seq r2
 
   let noop_reagent =
     { seq = (fun k -> k);
       tryReact = fun arg rx _ -> (Some arg, rx) }
 
   let swap ep = swap_internal ep noop_reagent
+
+  let rec (+) r1 r2 =
+    {seq = (fun next -> (r1.seq next) + (r2.seq next));
+     tryReact = fun a rx offer ->
+       match r1.tryReact a rx offer with
+       | (None,_) -> r2.tryReact a rx offer
+       | _ as v -> v}
+
 end
