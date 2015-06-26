@@ -17,6 +17,7 @@ module type SCHED = sig
   effect Resume  : 'a cont * 'a -> unit
 end
 
+(* Where is the Option module? *)
 let is_some = function
   | Some _ -> true
   | None -> false
@@ -106,10 +107,10 @@ module Make (Sched : SCHED) : S = struct
     try
       let Message (_,_,_,offer) = Queue.peek q in
       if Offer.is_pending offer
-      then q
+      then ()
       else (ignore (Queue.pop q); clean q)
     with
-    | Queue.Empty -> q
+    | Queue.Empty -> ()
 
   let clean_and_pop q =
     clean q;
@@ -131,30 +132,31 @@ module Make (Sched : SCHED) : S = struct
       | None -> withOffer ()
     in withoutOffer ()
 
-  let swap_internal ep k =
-    let {outgoing; incoming} = ep in
-    let seq next = k.seq next in
-    let swapK dualPayload dualOffer =
-      {seq = failwith "impossible";
-       tryReact = fun s rx my_offer ->
-         k.tryReact dualPayload (Reaction.add rx dualOffer s) my_offer}
-    in
-    let tryReact a rx offer =
-      let () =
-        match offer with
-        | None -> ()
-        | Some offer -> Queue.push (Message (a,rx,k,offer)) outgoing
+  let rec swap_internal : 'a 'b 'r. ('a,'b) endpoint -> ('b,'r) reagent -> ('a,'r) reagent  =
+    fun ep k ->
+      let {outgoing; incoming} = ep in
+      let seq next = swap_internal ep (k.seq next) in
+      let swapK dualPayload dualOffer =
+        {seq = failwith "impossible";
+         tryReact = fun s rx my_offer ->
+           k.tryReact dualPayload (Reaction.add rx dualOffer s) my_offer}
       in
-      match clean_and_pop incoming with
-      | None ->
-          assert (is_some offer);
-          (None, rx)
-      | Some (Message (a',rx',k',offer')) ->
-          assert (is_none offer);
-          let merged = k'.seq (swapK a' offer') in
-          merged.tryReact a (Reaction.append rx rx') offer
-    in
-    {seq; tryReact}
+      let tryReact a rx offer =
+        let () =
+          match offer with
+          | None -> ()
+          | Some offer -> Queue.push (Message (a,rx,k,offer)) outgoing
+        in
+        match clean_and_pop incoming with
+        | None ->
+            assert (is_some offer);
+            (None, rx)
+        | Some (Message (a',rx',k',offer')) ->
+            assert (is_none offer);
+            let merged = k'.seq (swapK a' offer') in
+            merged.tryReact a (Reaction.append rx rx') offer
+      in
+      {seq; tryReact}
 
   let (>>) r1 r2 = r1.seq r2
 
@@ -164,11 +166,11 @@ module Make (Sched : SCHED) : S = struct
 
   let swap ep = swap_internal ep noop_reagent
 
-  let rec (+) r1 r2 =
-    {seq = (fun next -> (r1.seq next) + (r2.seq next));
-     tryReact = fun a rx offer ->
-       match r1.tryReact a rx offer with
-       | (None,_) -> r2.tryReact a rx offer
-       | _ as v -> v}
-
+  let rec (+) : 'a 'b. ('a,'b) reagent -> ('a,'b) reagent -> ('a,'b) reagent =
+    fun r1 r2 ->
+      {seq = (fun next -> (r1.seq next) + (r2.seq next));
+      tryReact = fun a rx offer ->
+        match r1.tryReact a rx offer with
+        | (None,_) -> r2.tryReact a rx offer
+        | _ as v -> v}
 end
