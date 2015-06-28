@@ -22,62 +22,96 @@ module Make (Sched : SCHED) : S = struct
 
   module Offer = struct
 
+    let off_id = ref 0
+
+    let get_next_id () =
+      off_id := !off_id + 1;
+      !off_id - 1
+
     type 'a status =
-    | Pending of 'a option Sched.cont
+    | Pending of 'a option Sched.cont * int
     | Fulfilled
 
     type 'a t = 'a status ref
 
     let make_offer k =
       Printf.printf "make_offer\n";
-      ref (Pending k)
+      ref (Pending (k, get_next_id ()))
 
     let is_pending o =
       match !o with
       | Pending _ -> true
       | _ -> false
 
+    let get_id o =
+      match !o with
+      | Pending (_,id) -> id
+      | _ -> failwith "Offer.get_id: offer fullfilled"
+
+    let same_offer o1 o2 =
+      match (!o1,!o2) with
+      | (Pending (_,id1), Pending (_,id2)) -> id1 = id2
+      | _ -> false
   end
 
   module Reaction = struct
     type react =
-      {is_pending : unit -> bool;
+      {id         : int;
+       is_pending : unit -> bool;
        commit     : unit -> unit;
        abort      : unit -> unit}
 
-    type t = react list
+    module RxC = struct
+      type t = react
+      let compare {id=id1;_} {id=id2;_} = compare id1 id2
+    end
+
+    module RxSet = Set.Make (RxC)
+
+    type t = RxSet.t
 
     let add r o v =
-      {is_pending = (fun () -> Offer.is_pending o);
-       commit = (fun () ->
-         match !o with
-         | Offer.Fulfilled -> failwith "Reaction.add.fulfil"
-         | Offer.Pending k -> perform @@ Sched.Resume (k, Some v));
-       abort = (fun () ->
-         match !o with
-         | Offer.Fulfilled -> ()
-         | Offer.Pending k -> perform @@ Sched.Resume (k, None))}::r
+      let e =
+        {id = Offer.get_id o;
+        is_pending = (fun () -> Offer.is_pending o);
+        commit = (fun () ->
+          match !o with
+          | Offer.Fulfilled -> failwith "Reaction.add.fulfil"
+          | Offer.Pending (k,_) -> perform @@ Sched.Resume (k, Some v));
+        abort = (fun () ->
+          match !o with
+          | Offer.Fulfilled -> ()
+          | Offer.Pending (k,_) -> perform @@ Sched.Resume (k, None))}
+      in
+      RxSet.add e r
 
-    let append r1 r2 = r1 @ r2
+
+    let append r1 r2 = RxSet.union r1 r2
 
     exception CommitFail
 
-    let rec ensurePending = function
-    | [] -> ()
-    | {is_pending; _}::xs ->
-        if is_pending () then ensurePending xs else raise CommitFail
+    let ensurePending r =
+      RxSet.iter (fun {is_pending;_} ->
+        if is_pending() then () else raise CommitFail) r
 
     let tryCommit r =
       try
         ensurePending r;
-        List.iter (fun {commit; _} -> commit ()) r;
+        RxSet.iter (fun {commit; _} -> commit ()) r;
         true
       with
       | CommitFail ->
-          List.iter (fun {abort; _} -> abort ()) r;
+          RxSet.iter (fun {abort; _} -> abort ()) r;
           false
 
-    let empty = []
+    let empty = RxSet.empty
+
+    let has_offer r o =
+      match !o with
+      | Offer.Pending (_,id) ->
+          RxSet.mem {id; is_pending = (fun () -> false);
+                     commit = (fun _ -> ()); abort = fun _ -> ()} r
+      | Offer.Fulfilled -> failwith "Reaction.has_offer: fullfilled"
   end
 
   type 'a result = Block | Retry | Done of 'a
@@ -116,6 +150,7 @@ module Make (Sched : SCHED) : S = struct
     try Some (Queue.pop q) with Queue.Empty -> None
 
   let get_tid () = perform @@ Sched.Get_Tid
+
   let (!) r v =
     let rec withoutOffer () =
       match r.tryReact v Reaction.empty None with
@@ -163,15 +198,23 @@ module Make (Sched : SCHED) : S = struct
           | None ->
               Printf.printf "swap: no match\n";
               (fail_mode, rx)
-          | Some (Message (a',rx',k',offer') as m) ->
-              Printf.printf "swap: match found\n";
-              let merged = k'.seq (swapK a' offer') in
+          | Some (Message (a',rx',k',offer')) ->
               let new_rx = Reaction.append rx rx' in
-              match merged.tryReact a new_rx offer with
-              | (Retry, _)  -> tryFrom q Retry
-              | (Block, _) -> tryFrom q fail_mode
-              | _ as r -> r
-
+              let same_offer () =
+                match offer with
+                | None -> false
+                | Some offer -> Offer.same_offer offer offer'
+              in
+              if Reaction.has_offer new_rx offer' || same_offer () then
+                (Printf.printf "swap: unsuitable offer\n";
+                 tryFrom q fail_mode)
+              else
+                (Printf.printf "swap: match found offer'=%d\n" (Offer.get_id offer');
+                 let merged = k'.seq (swapK a' offer') in
+                 match merged.tryReact a new_rx offer with
+                 | (Retry, _)  -> tryFrom q Retry
+                 | (Block, _) -> tryFrom q fail_mode
+                 | _ as r -> r)
         in
         tryFrom (Queue.copy incoming) Block
       in
