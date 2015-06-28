@@ -15,16 +15,8 @@ module type SCHED = sig
   type 'a cont
   effect Suspend : ('a cont -> unit) -> 'a
   effect Resume  : 'a cont * 'a -> unit
+  effect Get_Tid  : int
 end
-
-(* Where is the Option module? *)
-let is_some = function
-  | Some _ -> true
-  | None -> false
-
-let is_none = function
-  | None -> true
-  | Some _ -> false
 
 module Make (Sched : SCHED) : S = struct
 
@@ -36,7 +28,9 @@ module Make (Sched : SCHED) : S = struct
 
     type 'a t = 'a status ref
 
-    let make_offer k = ref (Pending k)
+    let make_offer k =
+      Printf.printf "make_offer\n";
+      ref (Pending k)
 
     let is_pending o =
       match !o with
@@ -86,8 +80,10 @@ module Make (Sched : SCHED) : S = struct
     let empty = []
   end
 
+  type 'a result = Block | Retry | Done of 'a
+
   type ('a,'b) reagent =
-    { tryReact : 'a -> Reaction.t -> 'b Offer.t option -> 'b option * Reaction.t;
+    { tryReact : 'a -> Reaction.t -> 'b Offer.t option -> 'b result * Reaction.t;
       seq : 'c. ('b,'c) reagent -> ('a,'c) reagent }
 
   type ('a,'b) message =
@@ -103,6 +99,9 @@ module Make (Sched : SCHED) : S = struct
     {incoming = l1; outgoing = l2},
     {incoming = l2; outgoing = l1}
 
+  let qid q : int =
+    Obj.magic (Obj.repr q)
+
   let rec clean q =
     try
       let Message (_,_,_,offer) = Queue.peek q in
@@ -116,12 +115,13 @@ module Make (Sched : SCHED) : S = struct
     clean q;
     try Some (Queue.pop q) with Queue.Empty -> None
 
+  let get_tid () = perform @@ Sched.Get_Tid
   let (!) r v =
     let rec withoutOffer () =
       match r.tryReact v Reaction.empty None with
-      | (Some res, rx) ->
-          if Reaction.tryCommit rx then res else withoutOffer ()
+      | (Done res, rx) -> res
       | _ -> withOffer ()
+      (* XXX TODO Retry *)
     and withOffer () =
       match
         perform @@ Sched.Suspend (fun k ->
@@ -135,42 +135,71 @@ module Make (Sched : SCHED) : S = struct
   let rec swap_internal : 'a 'b 'r. ('a,'b) endpoint -> ('b,'r) reagent -> ('a,'r) reagent  =
     fun ep k ->
       let {outgoing; incoming} = ep in
+      let () = (clean incoming; clean outgoing) in
       let seq next = swap_internal ep (k.seq next) in
       let swapK dualPayload dualOffer =
-        {seq = failwith "impossible";
+        {seq = (fun _ -> failwith "swapK: impossible");
          tryReact = fun s rx my_offer ->
+           Printf.printf "swapK: tryReact\n";
            k.tryReact dualPayload (Reaction.add rx dualOffer s) my_offer}
       in
       let tryReact a rx offer =
+        let () = Printf.printf "incoming (%x) = %d outgoing (%x) = %d\n"
+                  (qid incoming) (Queue.length incoming)
+                  (qid outgoing) (Queue.length outgoing)
+        in
         let () =
           match offer with
-          | None -> ()
-          | Some offer -> Queue.push (Message (a,rx,k,offer)) outgoing
+          | None -> Printf.printf "swap: without offer\n"
+          | Some offer ->
+              Printf.printf "swap: with offer\n";
+              Queue.push (Message (a,rx,k,offer)) outgoing;
+              Printf.printf "After push : incoming (%x) = %d outgoing (%x) = %d\n"
+                  (qid incoming) (Queue.length incoming)
+                  (qid outgoing) (Queue.length outgoing)
         in
-        match clean_and_pop incoming with
-        | None ->
-            assert (is_some offer);
-            (None, rx)
-        | Some (Message (a',rx',k',offer')) ->
-            assert (is_none offer);
-            let merged = k'.seq (swapK a' offer') in
-            merged.tryReact a (Reaction.append rx rx') offer
+        let rec tryFrom q fail_mode =
+          match clean_and_pop q with
+          | None ->
+              Printf.printf "swap: no match\n";
+              (fail_mode, rx)
+          | Some (Message (a',rx',k',offer') as m) ->
+              Printf.printf "swap: match found\n";
+              let merged = k'.seq (swapK a' offer') in
+              let new_rx = Reaction.append rx rx' in
+              match merged.tryReact a new_rx offer with
+              | (Retry, _)  -> tryFrom q Retry
+              | (Block, _) -> tryFrom q fail_mode
+              | _ as r -> r
+
+        in
+        tryFrom (Queue.copy incoming) Block
       in
       {seq; tryReact}
 
   let (>>) r1 r2 = r1.seq r2
 
-  let noop_reagent =
+  let commit_reagent =
     { seq = (fun k -> k);
-      tryReact = fun arg rx _ -> (Some arg, rx) }
+      tryReact = fun arg rx _ ->
+        Printf.printf "commit_reagent\n";
+        if Reaction.tryCommit rx
+        then (Done arg, rx)
+        else failwith "commit_reagent: should retry"}
 
-  let swap ep = swap_internal ep noop_reagent
+  let swap ep = swap_internal ep commit_reagent
 
   let rec (+) : 'a 'b. ('a,'b) reagent -> ('a,'b) reagent -> ('a,'b) reagent =
     fun r1 r2 ->
       {seq = (fun next -> (r1.seq next) + (r2.seq next));
       tryReact = fun a rx offer ->
         match r1.tryReact a rx offer with
-        | (None,_) -> r2.tryReact a rx offer
+        | (Block,_) -> r2.tryReact a rx offer
+        | (Retry,_) ->
+            begin
+              match r2.tryReact a rx offer with
+              | (Done _, _) as v -> v
+              | (Block,rx) | (Retry,rx) -> (Retry, rx)
+            end
         | _ as v -> v}
 end

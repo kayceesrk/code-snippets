@@ -20,7 +20,11 @@ let run main =
   (* Run queue handling *)
   let run_q = Queue.create () in
   let enqueue t v tid =
-    Queue.push (fun () -> (cur_tid := tid; continue t v)) run_q
+    Queue.push (fun () ->
+      let old_tid = !cur_tid in
+      cur_tid := tid;
+      Printf.printf "[%d] switching to %d\n" old_tid tid;
+       continue t v) run_q
   in
   let rec dequeue () =
     if Queue.is_empty run_q then ()
@@ -28,8 +32,10 @@ let run main =
   in
   let rec spawn : type a . (a -> unit) -> a -> unit =
     fun f x ->
+      let old_tid = !cur_tid in
       cur_tid := !next_tid;
       next_tid := !next_tid + 1;
+      Printf.printf "[%d] Spawning thread %d\n" old_tid (!cur_tid);
       Effects.handle scheduler f x
     and scheduler =
       {Effects.return = dequeue;
@@ -43,9 +49,11 @@ let run main =
              enqueue k () !cur_tid;
              spawn f ()
          | Suspend f ->
-             f (Cont (k,!cur_tid));
+             Printf.printf "[%d] suspending\n" !cur_tid;
+             Effects.handle scheduler f (Cont (k,!cur_tid));
              dequeue ()
          | Resume(Cont (k',tid), v) ->
+             Printf.printf "[%d] resuming %d\n" !cur_tid tid;
              enqueue k' v tid;
              continue k ()
          | Get_Tid -> continue k !cur_tid

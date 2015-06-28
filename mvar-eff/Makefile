@@ -23,6 +23,9 @@ chameneos-eff: chameneos.ml
 MVar_test:
 	ocamlc -o MVar_test sched.mli sched.ml MVar.mli MVar.ml MVar_test.ml
 
+swap_test:
+	ocamlc -o swap_test sched.mli sched.ml swap.mli swap.ml swap_test.ml
+
 clean:
-	rm -f *.cmi *.cmx a.out *~ eff *.cmo MVar_test chameneos-eff chameneos-ghc \
+	rm -f *.cmi *.cmx a.out *~ eff *.cmo MVar_test swap_test chameneos-eff chameneos-ghc \
 	*.hi *.o chameneos-systhr chameneos-lwt *.annot
