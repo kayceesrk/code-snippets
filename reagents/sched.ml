@@ -1,6 +1,6 @@
 open Printf
 
-let debug f = f ()
+let debug f = () (* f () *)
 
 type thread_id = int
 type 'a cont = Cont : ('a,unit) continuation * thread_id -> 'a cont

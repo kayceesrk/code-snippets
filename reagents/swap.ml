@@ -17,7 +17,7 @@ module type SCHED = sig
   effect Resume  : 'a cont * 'a -> unit
 end
 
-let debug f = f ()
+let debug f = () (* f () *)
 
 module Make (Sched : SCHED) : S = struct
 
