@@ -15,7 +15,6 @@ module type SCHED = sig
   type 'a cont
   effect Suspend : ('a cont -> unit) -> 'a
   effect Resume  : 'a cont * 'a -> unit
-  effect Get_Tid  : int
 end
 
 module Make (Sched : SCHED) : S = struct
@@ -148,8 +147,6 @@ module Make (Sched : SCHED) : S = struct
   let clean_and_pop q =
     clean q;
     try Some (Queue.pop q) with Queue.Empty -> None
-
-  let get_tid () = perform @@ Sched.Get_Tid
 
   let (!) r v =
     let rec withoutOffer () =
