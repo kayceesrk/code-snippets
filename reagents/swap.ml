@@ -17,6 +17,8 @@ module type SCHED = sig
   effect Resume  : 'a cont * 'a -> unit
 end
 
+let debug f = f ()
+
 module Make (Sched : SCHED) : S = struct
 
   module Offer = struct
@@ -34,7 +36,7 @@ module Make (Sched : SCHED) : S = struct
     type 'a t = 'a status ref
 
     let make_offer k =
-      Printf.printf "make_offer\n";
+      debug (fun () -> Printf.printf "make_offer\n");
       ref (Pending (k, get_next_id ()))
 
     let is_pending o =
@@ -158,7 +160,10 @@ module Make (Sched : SCHED) : S = struct
       match
         perform @@ Sched.Suspend (fun k ->
           let offer = Offer.make_offer k in
-          ignore (r.tryReact v Reaction.empty (Some offer)))
+          match r.tryReact v Reaction.empty (Some offer) with
+          | Block,_ -> debug (fun () -> Printf.printf "withOffer.Block\n")
+          | Retry,_ -> debug (fun () -> Printf.printf "withOffer.Retry\n")
+          | Done _,_ -> debug (fun () -> Printf.printf "withOffer.Done\n"))
       with
       | Some res -> res
       | None -> withOffer ()
@@ -172,28 +177,30 @@ module Make (Sched : SCHED) : S = struct
       let swapK dualPayload dualOffer =
         {seq = (fun _ -> failwith "swapK: impossible");
          tryReact = fun s rx my_offer ->
-           Printf.printf "swapK: tryReact\n";
+           debug (fun () -> Printf.printf "swapK: tryReact\n");
            k.tryReact dualPayload (Reaction.add rx dualOffer s) my_offer}
       in
       let tryReact a rx offer =
-        let () = Printf.printf "incoming (%x) = %d outgoing (%x) = %d\n"
-                  (qid incoming) (Queue.length incoming)
-                  (qid outgoing) (Queue.length outgoing)
+        let () = debug (fun () ->
+                   Printf.printf "incoming (%x) = %d outgoing (%x) = %d\n"
+                    (qid incoming) (Queue.length incoming)
+                    (qid outgoing) (Queue.length outgoing))
         in
         let () =
           match offer with
-          | None -> Printf.printf "swap: without offer\n"
+          | None -> debug (fun () -> Printf.printf "swap: without offer\n")
           | Some offer ->
-              Printf.printf "swap: with offer\n";
+              debug (fun () -> Printf.printf "swap: with offer\n");
               Queue.push (Message (a,rx,k,offer)) outgoing;
-              Printf.printf "After push : incoming (%x) = %d outgoing (%x) = %d\n"
+              debug (fun () ->
+                Printf.printf "After push : incoming (%x) = %d outgoing (%x) = %d\n"
                   (qid incoming) (Queue.length incoming)
-                  (qid outgoing) (Queue.length outgoing)
+                  (qid outgoing) (Queue.length outgoing))
         in
         let rec tryFrom q fail_mode =
           match clean_and_pop q with
           | None ->
-              Printf.printf "swap: no match\n";
+              debug (fun () -> Printf.printf "swap: no match\n");
               (fail_mode, rx)
           | Some (Message (a',rx',k',offer')) ->
               let new_rx = Reaction.append rx rx' in
@@ -203,10 +210,10 @@ module Make (Sched : SCHED) : S = struct
                 | Some offer -> Offer.same_offer offer offer'
               in
               if Reaction.has_offer new_rx offer' || same_offer () then
-                (Printf.printf "swap: unsuitable offer\n";
+                (debug (fun () -> Printf.printf "swap: unsuitable offer\n");
                  tryFrom q fail_mode)
               else
-                (Printf.printf "swap: match found offer'=%d\n" (Offer.get_id offer');
+                (debug (fun () -> Printf.printf "swap: match found offer'=%d\n" (Offer.get_id offer'));
                  let merged = k'.seq (swapK a' offer') in
                  match merged.tryReact a new_rx offer with
                  | (Retry, _)  -> tryFrom q Retry
@@ -222,7 +229,7 @@ module Make (Sched : SCHED) : S = struct
   let commit_reagent =
     { seq = (fun k -> k);
       tryReact = fun arg rx _ ->
-        Printf.printf "commit_reagent\n";
+        debug (fun () -> Printf.printf "commit_reagent\n");
         if Reaction.tryCommit rx
         then (Done arg, rx)
         else failwith "commit_reagent: should retry"}
