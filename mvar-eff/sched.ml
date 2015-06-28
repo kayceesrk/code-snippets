@@ -21,7 +21,6 @@ let run main =
   let run_q = Queue.create () in
   let enqueue t v tid =
     Queue.push (fun () ->
-      let old_tid = !cur_tid in
       cur_tid := tid;
       continue t v) run_q
   in
@@ -31,7 +30,6 @@ let run main =
   in
   let rec spawn : type a . (a -> unit) -> a -> unit =
     fun f x ->
-      let old_tid = !cur_tid in
       cur_tid := !next_tid;
       next_tid := !next_tid + 1;
       Effects.handle scheduler f x

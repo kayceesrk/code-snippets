@@ -16,18 +16,6 @@ module type S = sig
   (** [take_mvar m] empties the mvar [m] if it is filled and returns the value.
       If [m] is empty, then the operation blocks until the mvar becomes filled. *)
   val take_mvar : 'a t -> 'a
-
-  type ('a,'b) reagent
-
-  val take_mvar_evt : 'a t -> ('a -> 'b -> 'c) -> ('b, 'c) reagent
-
-  val put_mvar_evt  : 'a t -> ('a -> 'b -> 'c) -> ('a * 'b, 'c) reagent
-
-  val (>>) : ('a,'b) reagent -> ('b,'c) reagent -> ('a,'c) reagent
-
-  val (+) : ('a,'b) reagent -> ('a,'b) reagent -> ('a,'b) reagent
-
-  val (!) : ('a,'b) reagent -> 'a -> 'b
 end
 
 module type SCHED = sig
