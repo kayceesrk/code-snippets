@@ -23,96 +23,81 @@ module Make (Sched : SCHED) : S = struct
 
   module Offer = struct
 
-    let off_id = ref 0
+    type offer_id = int
+
+    let id = ref 0
 
     let get_next_id () =
-      off_id := !off_id + 1;
-      !off_id - 1
+      id := !id + 1;
+      !id - 1
 
     type 'a status =
-    | Pending of 'a option Sched.cont * int
-    | Fulfilled
+      | Pending of 'a option Sched.cont
+      | Fulfilled
 
-    type 'a t = 'a status ref
+    type 'a t = offer_id * 'a status ref
 
     let make_offer k =
-      debug (fun () -> Printf.printf "make_offer\n");
-      ref (Pending (k, get_next_id ()))
+      (get_next_id (), ref (Pending k))
 
-    let is_pending o =
-      match !o with
+    let is_pending (_,offer) =
+      match !offer with
       | Pending _ -> true
       | _ -> false
 
-    let get_id o =
-      match !o with
-      | Pending (_,id) -> id
-      | _ -> failwith "Offer.get_id: offer fullfilled"
+    let commit (_,offer) v =
+      match !offer with
+      | Pending k -> perform @@ Sched.Resume (k, Some v)
+      | _ -> failwith "Offer.commit"
 
-    let same_offer o1 o2 =
-      match (!o1,!o2) with
-      | (Pending (_,id1), Pending (_,id2)) -> id1 = id2
-      | _ -> false
+    let abort (_,offer) =
+      match !offer with
+      | Pending k -> perform @@ Sched.Resume (k, None)
+      | _ -> failwith "Offer.abort"
+
+    let get_id (i,_) = i
+
+    let mk_dummy_offer i = (i, ref Fulfilled)
+
+    let same_offer (i,_) (j,_) = i = j
   end
 
   module Reaction = struct
-    type react =
-      {id         : int;
-       is_pending : unit -> bool;
-       commit     : unit -> unit;
-       abort      : unit -> unit}
 
-    module RxC = struct
-      type t = react
-      let compare {id=id1;_} {id=id2;_} = compare id1 id2
+    type rx = Rx : 'a Offer.t * 'a -> rx
+
+    module Rx = struct
+      type t = Offer.offer_id * rx
+      let compare (i1,_) (i2,_) = compare i1 i2
     end
 
-    module RxSet = Set.Make (RxC)
+    module RxSet = Set.Make (Rx)
 
     type t = RxSet.t
 
-    let add r o v =
-      let e =
-        {id = Offer.get_id o;
-        is_pending = (fun () -> Offer.is_pending o);
-        commit = (fun () ->
-          match !o with
-          | Offer.Fulfilled -> failwith "Reaction.add.fulfil"
-          | Offer.Pending (k,_) -> perform @@ Sched.Resume (k, Some v));
-        abort = (fun () ->
-          match !o with
-          | Offer.Fulfilled -> ()
-          | Offer.Pending (k,_) -> perform @@ Sched.Resume (k, None))}
-      in
-      RxSet.add e r
-
-
-    let append r1 r2 = RxSet.union r1 r2
+    let append = RxSet.union
 
     exception CommitFail
 
+    let add r o v = RxSet.add (Offer.get_id o, Rx (o,v)) r
+
     let ensurePending r =
-      RxSet.iter (fun {is_pending;_} ->
-        if is_pending() then () else raise CommitFail) r
+      RxSet.iter (fun (_,Rx (offer, _)) ->
+        if Offer.is_pending offer then () else raise CommitFail) r
 
     let tryCommit r =
       try
         ensurePending r;
-        RxSet.iter (fun {commit; _} -> commit ()) r;
+        RxSet.iter (fun (_,Rx (offer, v)) -> Offer.commit offer v) r;
         true
       with
       | CommitFail ->
-          RxSet.iter (fun {abort; _} -> abort ()) r;
+          RxSet.iter (fun (_,Rx (offer, _)) -> Offer.abort offer) r;
           false
 
     let empty = RxSet.empty
 
-    let has_offer r o =
-      match !o with
-      | Offer.Pending (_,id) ->
-          RxSet.mem {id; is_pending = (fun () -> false);
-                     commit = (fun _ -> ()); abort = fun _ -> ()} r
-      | Offer.Fulfilled -> failwith "Reaction.has_offer: fullfilled"
+    let has_offer r (i,_) = RxSet.mem (i, Rx (Offer.mk_dummy_offer i, 0)) r
   end
 
   type 'a result = Block | Retry | Done of 'a
