@@ -1,12 +1,4 @@
-(* Expression language with lambda represented using Higher-order abstract
- * syntax.
- *
- * Does ['a expr] form a Monad, where Atom is return and App is bind?
- *
- * Notes: I think I've seen this sort of encoding used for efficient DSLs, where
- * the point is to discharge all operations through the host language
- * (arithmetic, string manipulation) except the ones to be implemented in the
- * DSL (delimcc operators). Does this have a name? XXX KC. *)
+(* Expression language *)
 type 'a expr =
   | Atom  : 'a -> 'a expr
   | App   : ('a -> 'b expr) * 'a expr -> 'b expr
@@ -29,9 +21,6 @@ let rec to_cps : 'a 'b. 'a expr -> ('a -> 'b expr) -> 'b expr =
     | Atom v -> k v
     | App (f, v) -> to_cps v (fun v' -> to_cps (f v') k)
     | Reset e -> App (k, (to_cps e (fun x -> Atom x)))
-    (* We do not have answer type polymorphism. i.e, shift does not know the
-     * return type of reset. Hence, use obj.magic to coerce the type. Of course,
-     * if the answer types don't match, we'll have a segfault. FIXME. *)
     | Shift f -> to_cps ((Obj.magic f) k) (fun x -> Atom x)
 
 let prog1 = App ((fun s -> Atom (s ^ "\n")), (Atom "Hello"))
