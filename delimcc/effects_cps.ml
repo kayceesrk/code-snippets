@@ -1,3 +1,6 @@
+(* ***Broken***: HOAS does not work, since the effect handler also needs to be
+ * transformed! *)
+
 effect E1 : int
 effect E2 : float
 
@@ -44,7 +47,7 @@ let rec to_cps : 'a 'b. 'a expr -> ('a,'b) cont -> 'b eff_cont -> 'b expr =
     match e with
     | Atom v -> k v
     | App (f, e) -> to_cps e (fun v -> to_cps (f v) k ke) ke
-    | Perform e -> let Cont _ke = ke in (Obj.magic _ke) e k
+    | Perform e -> let Cont _ke = ke in to_cps ((Obj.magic _ke) e k) k ke
     | Handle (e, h) -> to_cps (to_cps e (fun x -> Atom x) (Cont h)) k ke
 
 (* Program 1 *)
@@ -79,4 +82,23 @@ let h e k =
       print_string "Return from E2\n";
       Atom ()
 
+let () = print_string "****Prog 2****\n"
 let () = eval (to_cps (Handle (e,h)) id_cont id_eff_cont)
+let () = print_string "\n"
+
+(* Program 3 *)
+let () = print_string "****Prog 3****\n"
+let v =
+  try
+    (try perform E1 with
+     | effect E1 k -> continue k (perform E1))
+  with
+  | effect E1 k -> continue k 10
+
+let () = Printf.printf "%d\n" v
+let e = Handle (Handle (Perform E1, (fun e k ->
+            try perform e with
+            | effect E1 _ -> k (Perform E1))),
+          fun e k -> try perform e with effect E1 _ -> k (Atom 10))
+let () = Printf.printf "%d\n" (eval (to_cps e id_cont id_eff_cont))
+let () = print_string "\n"
