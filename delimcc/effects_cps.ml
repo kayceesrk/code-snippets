@@ -96,9 +96,9 @@ let v =
   | effect E1 k -> continue k 10
 
 let () = Printf.printf "%d\n" v
-let e = Handle (Handle (Perform E1, (fun e k ->
+(*let e = Handle (Handle (Perform E1, (fun e k ->
             try perform e with
             | effect E1 _ -> k (Perform E1))),
           fun e k -> try perform e with effect E1 _ -> k (Atom 10))
-let () = Printf.printf "%d\n" (eval (to_cps e id_cont id_eff_cont))
+let () = Printf.printf "%d\n" (eval (to_cps e id_cont id_eff_cont))*)
 let () = print_string "\n"
