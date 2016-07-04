@@ -165,7 +165,7 @@ module type Alias = sig
   val make   : (unit -> 'a) -> ('a, [`One]) t
   val dup    : ('a, 'b) t -> ('a,[`Succ of 'b]) t * ('a, [`Succ of 'b]) t
   val merge  : ('a, [`Succ of 'b]) t -> ('a, [`Succ of 'b]) t -> ('a, 'b) t
-  val delete : ('a, [`One]) t -> ('a -> unit) -> unit
+  val free   : ('a, [`One]) t -> ('a -> unit) -> unit
   val app   : ('a,'b) t -> ('a -> unit) -> unit
 end
 
@@ -182,54 +182,11 @@ module Alias : Alias = struct
   let make f = {v = f (); live = true}
   let dup x = check x; (fresh x, fresh x)
   let merge x y = check x; check y; fresh x
-  let delete x f = check x; f x.v
+  let free x f = check x; f x.v
   let app x f = f x.v
 end
 
 module type PolyRef =
-sig
-  type 'a ref constraint 'a = [>]
-  val ref   : 'a -> ([`Read of 'a * 'b | `Write of 'c * 'd] as 'b) ref
-  val read  : [> `Read  of 'a * ([< `Read of 'a * 'b | `Write of 'c * 'd] as 'b)] ref -> 'a * 'b ref
-  val write : [> `Write of 'a * ([< `Read of 'a * 'b | `Write of 'c * 'd] as 'b)] ref -> 'a -> 'b ref
-end
-
-module PolyRef : PolyRef =
-struct
-  type 'a ref =
-    {contents     : 'b. 'b;
-     mutable live : bool} (* For linearity *)
-     constraint 'a = [>]
-
-  let ref v = {contents = Obj.magic v; live = true}
-
-  let check r =
-    if not r.live then raise LinearityViolation;
-    r.live <- false
-
-  let fresh r = {r with live = true}
-
-  let read r =
-    check r;
-    (Obj.magic r.contents, fresh r)
-
-  let write r v =
-    check r;
-    { contents = Obj.magic v; live = true }
-
-end
-
-let foo_polyref r =
-  let open PolyRef in
-  let v,r = read r in
-  Printf.printf "%d\n" v;
-  let v,r = read r in
-  Printf.printf "%d\n" v;
-  let r = write r "hello" in
-  let v,r = read r in
-  print_endline v
-
-module type PolyRef2 =
 sig
   type ('a,'b) rw_prot constraint 'b = [> `Read of 'a * 'b | `Write of 'c * ('c,_) rw_prot]
   type 'a ref constraint 'a = ('b,'c) rw_prot
@@ -239,7 +196,7 @@ sig
   val branch : ('a, [>] as 'b) rw_prot ref -> (('a, [>] as 'c) rw_prot ref -> 'b) -> ('a, 'c) rw_prot ref
 end
 
-module PolyRef2 : PolyRef2 =
+module PolyRef : PolyRef =
 struct
   type ('a,'b) rw_prot constraint 'b = [> `Read of 'a * 'b | `Write of 'c * ('c,_) rw_prot]
 
@@ -267,14 +224,10 @@ struct
   let branch r _ = check r; fresh r
 end
 
-let foo_polyref2 r =
-  let open PolyRef2 in
+let rec foo_polyref r =
+  let open PolyRef in
   let v,r = read r in
-  Printf.printf "%d\n" v;
+  let r = write r (string_of_int (v+1)) in
   let v,r = read r in
-  Printf.printf "%d\n" v;
-  let r = write r "hello" in
-  let v,r = read r in
-  print_endline v
-
-
+  let r = write r (int_of_string v) in
+  foo_polyref r
