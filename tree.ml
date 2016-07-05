@@ -83,8 +83,6 @@ let rec inorder t f =
       let r, t = right t in
       inorder r f
 
-
-
 let rec postorder t f =
   match destruct t with
   | `L -> ()
@@ -118,5 +116,3 @@ let foo () =
   let t = make_tree () in
   inorder t (fun _ -> ());
   inorder t (fun _ -> ())
-
-type ('a,'b,'c) balanced_tree = ('a,'b,'c) tree
