@@ -10,10 +10,8 @@ sig
     ('a, 'b) tree * ('a, 'd) tree
   val right : ('a, [`Node of _ * 'b] as 'd) tree ->
     ('a, 'b) tree * ('a, 'd) tree
-  val destruct : ('a, [`Leaf | `Node of 'b * 'c]) tree ->
+  val destruct : ('a, [< `Leaf | `Node of 'b * 'c]) tree ->
     [`L | `N of ('a, [`Node of 'b * 'c]) tree]
-
-  val lift : ('a, [< `Leaf | `Node of 'b * 'c]) tree -> ('a, [`Leaf | `Node of 'b * 'c]) tree
 end
 
 module Tree : Tree =
@@ -29,11 +27,9 @@ struct
   let right (Node (_,_,r) as t) = r,t
 
   let destruct t =
-    match t with
+    match (Obj.magic t) with
     | Leaf -> `L
     | Node (l,v,r) -> `N (Node (l, v, r))
-
-  let lift t = Obj.magic t
 end
 
 open Tree
@@ -85,5 +81,5 @@ module RightBranching = struct
     constraint 'b = [< `Leaf | `Node of [`Leaf] * 'b]
 end
 
+let _ = preorder (make_tree2 ()) (fun x -> Printf.printf "%d\n" x)
 let x : (_,_) Balanced.balanced_tree = make_tree2 ()
-let _ = preorder (lift @@ make_tree2 ()) (fun x -> Printf.printf "%d\n" x)
