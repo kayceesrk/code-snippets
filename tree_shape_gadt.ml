@@ -1,6 +1,6 @@
 module type Tree =
 sig
-  type ('a,'b) tree
+  type ('a,+'b) tree
 
   val mk_leaf  : unit -> ('a,[`Leaf]) tree
   val mk_node  : ('a, 'b) tree -> 'a -> ('a, 'c) tree -> ('a, [`Node of 'b * 'c ]) tree
@@ -16,9 +16,10 @@ end
 
 module Tree : Tree =
 struct
-  type ('a,'b) tree =
-    | Leaf : ('a, [`Leaf]) tree (* > to be able to write descruct *)
+  type ('a,+'b) tree =
+    | Leaf : ('a, [`Leaf]) tree
     | Node : ('a,'c) tree * 'a * ('a,'d) tree -> ('a, [`Node of 'c * 'd]) tree
+
   let mk_leaf () = Leaf
   let mk_node l v r = Node (l,v,r)
 
@@ -47,6 +48,8 @@ let rec preorder t f =
 
 let make_tree1 () =
   mk_node
+    (mk_leaf ())
+    10
     (mk_node
       (mk_leaf ())
       20
@@ -56,14 +59,28 @@ let make_tree1 () =
         (mk_leaf())
       )
     )
-    10
-    (mk_leaf ())
+
 
 let make_tree2 () =
   mk_node
     (mk_node
       (mk_leaf ())
+      10
+      (mk_leaf ()))
+    10
+    (mk_node
+      (mk_leaf ())
       20
+      (mk_leaf ()))
+
+let make_tree3 () =
+  mk_node
+    (mk_node
+      (mk_node
+        (mk_leaf ())
+        40
+        (mk_leaf ()))
+      10
       (mk_leaf ()))
     10
     (mk_node
@@ -77,9 +94,10 @@ module Balanced = struct
 end
 
 module RightBranching = struct
-  type ('a,'b) right_branching = ('a,'b) tree
-    constraint 'b = [< `Leaf | `Node of [`Leaf] * 'b]
+  type ('a,+'b) right_branching = ('a,'b) tree
+    constraint 'b = [`Leaf | `Node of [`Leaf] * 'b]
 end
 
 let _ = preorder (make_tree2 ()) (fun x -> Printf.printf "%d\n" x)
 let x : (_,_) Balanced.balanced_tree = make_tree2 ()
+let x : (_,_) RightBranching.right_branching = make_tree1 ()
