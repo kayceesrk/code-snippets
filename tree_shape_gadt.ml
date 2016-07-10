@@ -17,8 +17,8 @@ end
 module Tree : Tree =
 struct
   type ('a,'b) tree =
-    | Leaf : ('a, [> `Leaf]) tree (* > to be able to write descruct *)
-    | Node : ('a,'c) tree * 'a * ('a,'d) tree -> ('a, [> `Node of 'c * 'd]) tree
+    | Leaf : ('a, [`Leaf]) tree (* > to be able to write descruct *)
+    | Node : ('a,'c) tree * 'a * ('a,'d) tree -> ('a, [`Node of 'c * 'd]) tree
   let mk_leaf () = Leaf
   let mk_node l v r = Node (l,v,r)
 
@@ -28,8 +28,8 @@ struct
 
   let destruct t =
     match (Obj.magic t) with
-    | Leaf -> `L
     | Node (l,v,r) -> `N (Node (l, v, r))
+    | _ -> `L
 end
 
 open Tree
