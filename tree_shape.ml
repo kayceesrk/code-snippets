@@ -12,11 +12,6 @@ sig
     ('a, 'b) tree * ('a, 'd) tree
   val destruct : ('a, [< `Leaf | `Node of 'b * 'c]) tree ->
     [`L | `N of ('a,[`Node of 'b * 'c]) tree]
-  val lift : ('a, [< `Leaf | `Node of 'b * 'c]) tree ->
-    ('a, [`Leaf | `Node of 'b * 'c]) tree
-  val destruct2 : ('a, [`Leaf | `Node of 'b * 'c]) tree ->
-    [`L | `N of ('a,[`Node of 'b * 'c]) tree]
-
 end
 
 module Tree : Tree =
@@ -56,10 +51,6 @@ struct
     match (Obj.magic t) with
     | Leaf -> `L
     | Node (l,v,r) -> `N (fresh (Node (l,v,r)))
-
-  let construct t = t
-  let lift t = t
-  let destruct2 = destruct
 end
 
 open Tree
