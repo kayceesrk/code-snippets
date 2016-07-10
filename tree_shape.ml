@@ -12,6 +12,7 @@ sig
     ('a, 'b) tree * ('a, 'd) tree
   val destruct : ('a, [< `Leaf | `Node of 'b * 'c]) tree ->
     [`L | `N of ('a,[`Node of 'b * 'c]) tree]
+  val strip_shape : ('a, _) tree -> ('a, _) tree
 end
 
 module Tree : Tree =
@@ -51,20 +52,22 @@ struct
     match (Obj.magic t) with
     | Leaf -> `L
     | Node (l,v,r) -> `N (fresh (Node (l,v,r)))
+
+  let strip_shape(t,r) = check r; fresh t
 end
 
 open Tree
 
 let rec preorder t f =
-  match destruct t with
+  match destruct (strip_shape t) with
   | `L -> ()
   | `N t ->
       let v, t = value t in
       f v;
       let l , t = left t in
-      preorder (Obj.magic l) f;
+      preorder l f;
       let r, t = right t in
-      preorder (Obj.magic r) f
+      preorder r f
 
 let make_tree1 () =
   mk_node
