@@ -1,24 +1,29 @@
 module type Tree =
 sig
-  type ('a,+'b) tree constraint 'b = [>]
+  type ('a,+'b,+'c) tree
+    constraint 'b = [>] (* shape *)
+    constraint 'c = [>] * [>] (* count as difference between peano numbers *)
 
-  val mk_leaf  : unit -> ('a,[`Leaf]) tree
-  val mk_node  : ('a, 'b) tree -> 'a -> ('a, 'c) tree -> ('a, [`Node of 'b * 'c ]) tree
+  val mk_leaf  : unit -> ('a,[`Leaf], 'z * 'z) tree
+  val mk_node  : ('a, 'b, 'u*'n) tree -> 'a -> ('a, 'c, 'm*'u) tree ->
+    ('a, [`Node of ('b *'u * 'n) * ('c * 'm * 'u)], 'm*[`Succ of 'n]) tree
 
-  val value : ('a, [`Node of _] as 'b) tree -> 'a * ('a, 'b) tree
-  val left  : ('a, [`Node of 'b * _] as 'd) tree ->
-    ('a, 'b) tree * ('a, 'd) tree
-  val right : ('a, [`Node of _ * 'b] as 'd) tree ->
-    ('a, 'b) tree * ('a, 'd) tree
-  val destruct : ('a, [< `Leaf | `Node of 'b * 'c]) tree ->
-    [`L | `N of ('a,[`Node of 'b * 'c]) tree]
-  val strip_shape : ('a, _) tree -> ('a, _) tree
+  val value : ('a, [`Node of _] as 'b, 'c) tree -> 'a * ('a, 'b, 'c) tree
+  val left  : ('a, [`Node of ('b * 'u * 'n) * _] as 'd, 'f) tree ->
+    ('a, 'b, 'u*'n) tree * ('a, 'd, 'f) tree
+  val right : ('a, [`Node of _ * ('b * 'u * 'n)] as 'd, 'f) tree ->
+    ('a, 'b, 'u * 'n) tree * ('a, 'd, 'f) tree
+  val destruct : ('a, [< `Leaf | `Node of 'b * 'c], 'f) tree ->
+    [`L | `N of ('a,[`Node of 'b * 'c], 'f) tree]
+  val strip : ('a, _,_) tree -> ('a, _, _) tree
 end
 
 module Tree : Tree =
 struct
   type 'a _tree = Leaf | Node of 'a _tree * 'a * 'a _tree
-  type ('a,+'b) tree = ('a _tree * bool ref) constraint 'b = [>]
+  type ('a,+'b,+'c) tree = ('a _tree * bool ref)
+    constraint 'b = [>]
+    constraint 'c = [>] * [>]
 
   let fresh x = (x, ref true)
   exception LinearityViolation
@@ -53,13 +58,13 @@ struct
     | Leaf -> `L
     | Node (l,v,r) -> `N (fresh (Node (l,v,r)))
 
-  let strip_shape(t,r) = check r; fresh t
+  let strip(t,r) = check r; fresh t
 end
 
 open Tree
 
 let rec preorder t f =
-  match destruct (strip_shape t) with
+  match destruct (strip t) with
   | `L -> ()
   | `N t ->
       let v, t = value t in
@@ -114,21 +119,23 @@ let _ = preorder (make_tree2 ()) (fun x -> Printf.printf "%d\n" x)
 let _ = preorder (make_tree3 ()) (fun x -> Printf.printf "%d\n" x)
 
 module Balanced = struct
-  type ('a,+'b) balanced_tree = ('a,'b) tree
-    constraint 'b = [< `Leaf | `Node of 'c * 'c]
+  type ('a,'b,'c) balanced_tree = ('a,'b,'c) tree
+    constraint 'b = [< `Leaf | `Node of ('d * 'u * 'n) * ('d * 'm * 'u)]
 end
 
 module RightBranching = struct
-  type ('a,+'b) right_branching = ('a,'b) tree
+  type ('a,+'b,+'c) right_branching = ('a,'b,'c) tree
     constraint 'b = [`Leaf | `Node of [`Leaf] * 'b]
 end
 
 module LeftBranching = struct
-  type ('a,+'b) left_branching = ('a,'b) tree
+  type ('a,+'b,+'c) left_branching = ('a,'b,'c) tree
      constraint 'b = [`Leaf | `Node of 'b * [`Leaf]]
 end
 
-let x : (_,_) Balanced.balanced_tree = make_tree2 ()
+
+let t2 = make_tree2()
+let x : (_,_,_) Balanced.balanced_tree = t2
 (* The following do not type check
 
 let x : (_,_) Balanced.balanced_tree = make_tree1 ()
@@ -136,6 +143,6 @@ let x : (_,_) Balanced.balanced_tree = make_tree3 ()
 *)
 
 (* Needs explicit casting *)
-let y : (_,_) RightBranching.right_branching =
-  (make_tree1 () : (('a,[`Node of [`Leaf] * [`Node of [`Leaf] * [`Leaf]]]) tree) :>
-                   (('a,[`Leaf | `Node of [`Leaf] * 'b] as 'b) tree))
+let y : (_,_,_) RightBranching.right_branching =
+  (make_tree1 () : (('a,[`Node of ([`Leaf] * _ * _) * [`Node of [`Leaf] * [`Leaf]]], 'c) tree) :>
+                   (('a,[`Leaf | `Node of [`Leaf] * 'b] as 'b, 'c) tree))
