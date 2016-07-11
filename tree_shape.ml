@@ -69,6 +69,7 @@ let rec preorder t f =
       let r, t = right t in
       preorder r f
 
+(* Right branching tree *)
 let make_tree1 () =
   mk_node
     (mk_leaf ())
@@ -80,6 +81,7 @@ let make_tree1 () =
     )
 
 
+(* balanced tree *)
 let make_tree2 () =
   mk_node
     (mk_node
@@ -107,6 +109,10 @@ let make_tree3 () =
       20
       (mk_leaf ()))
 
+let _ = preorder (make_tree1 ()) (fun x -> Printf.printf "%d\n" x)
+let _ = preorder (make_tree2 ()) (fun x -> Printf.printf "%d\n" x)
+let _ = preorder (make_tree3 ()) (fun x -> Printf.printf "%d\n" x)
+
 module Balanced = struct
   type ('a,+'b) balanced_tree = ('a,'b) tree
     constraint 'b = [< `Leaf | `Node of 'c * 'c]
@@ -122,8 +128,14 @@ module LeftBranching = struct
      constraint 'b = [`Leaf | `Node of 'b * [`Leaf]]
 end
 
-let _ = preorder (make_tree2 ()) (fun x -> Printf.printf "%d\n" x)
 let x : (_,_) Balanced.balanced_tree = make_tree2 ()
+(* The following do not type check
+
+let x : (_,_) Balanced.balanced_tree = make_tree1 ()
+let x : (_,_) Balanced.balanced_tree = make_tree3 ()
+*)
+
+(* Needs explicit casting *)
 let y : (_,_) RightBranching.right_branching =
   (make_tree1 () : (('a,[`Node of [`Leaf] * [`Node of [`Leaf] * [`Leaf]]]) tree) :>
                    (('a,[`Leaf | `Node of [`Leaf] * 'b] as 'b) tree))
