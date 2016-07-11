@@ -15,7 +15,8 @@ sig
     ('a, 'b, 'x) tree * ('a, 'd, 'c) tree
   val destruct : ('a, [< `Leaf | `Node of 'b * 'c], 'd) tree ->
     [`L | `N of ('a,[`Node of 'b * 'c], 'd) tree]
-  val strip_shape : ('a, _, 'b) tree -> ('a, _, 'b) treeA
+
+  val strip_shape : ('a, _, 'b) tree -> ('a, _, 'b) tree
 end
 
 module Tree : Tree =
@@ -59,6 +60,7 @@ struct
     | Node (l,v,r) -> `N (fresh (Node (l,v,r)))
 
   let strip_shape(t,r) = check r; fresh t
+
 end
 
 open Tree
@@ -152,10 +154,5 @@ let _ = preorder (make_tree2 ()) (fun x -> Printf.printf "%d\n" x)
 let x : (_,_,_) Balanced.balanced_tree = make_tree2 ()
 (* let x : (_,_,_) Balanced.balanced_tree = make_tree1 () *)
 (* let x : (_,_,_) Balanced.balanced_tree = make_tree3 () *)
-
-let foo t =
-  match destruct t with
-  | `L -> ()
-  | `N t ->
 
 let y : (_,_,_) RightBranching.right_branching = make_tree1 ()
