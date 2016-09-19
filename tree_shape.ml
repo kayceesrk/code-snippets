@@ -129,6 +129,7 @@ module LeftBranching = struct
 end
 
 let x : (_,_) Balanced.balanced_tree = make_tree2 ()
+
 (* The following do not type check
 
 let x : (_,_) Balanced.balanced_tree = make_tree1 ()
