@@ -16,36 +16,34 @@ newMyChan = do
 send :: MyChan a -> a -> STM ()
 send (ref,waiting) v = do
   st <- readTVar ref
+  w <- readTVar waiting
   case st of
-    Nothing -> do
-      writeTVar ref (Just v)
-      w <- readTVar waiting
-      when w $ writeTVar waiting False
+    Nothing ->
+      if w
+        then do
+          writeTVar ref (Just v)
+        else retry
     _ -> retry
 
 recv :: MyChan a -> STM a
 recv (ref,waiting) = do
-  w <- readTVar waiting
-  if w
-    then retry
-    else do
-      st <- readTVar ref
-      case st of
-        Nothing -> do
-          writeTVar waiting True
-          retry
-        Just v -> do
-          assert (not w) (return ())
-          writeTVar ref Nothing
-          return v
+  st <- readTVar ref
+  case st of
+    Nothing -> do
+      writeTVar waiting True
+      retry
+    Just v -> do
+      writeTVar ref Nothing
+      writeTVar waiting False
+      return v
 
 numIters :: Int
-numIters = 10
+numIters = 1
 
 main :: IO ()
 main = do
   c <- newMyChan
-  forkIO $ replicateM_ numIters $ do
+  forkIO $ replicateM_ numIters $ atomically $ send c 0
+  replicateM_ numIters $ do
     v <- atomically $ recv c
     print v
-  replicateM_ numIters $ atomically $ send c 0
