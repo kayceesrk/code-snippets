@@ -8,7 +8,7 @@ module type Handler = sig
   val run    : unit t -> unit
   val handle : 'a t -> (effect -> cont -> unit t) -> unit t
   val continue : cont -> unit t
-  val perform : effect -> unit t -> unit t
+  val perform : effect -> unit t (* continuation *) -> unit t
 end
 
 module Handler : Handler = struct
