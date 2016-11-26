@@ -53,6 +53,3 @@ let _ = run @@
     | _ ->
         Printf.printf "Delegating\n";
         perform eff (continue k))
-
-let v = run (return 10 >>= fun x ->
-        Printf.printf "%d\n" x; return ())
