@@ -188,17 +188,17 @@ end
 
 module type PolyRef =
 sig
-  type ('a,'b) rw_prot constraint 'b = [> `Read of 'a * 'b | `Write of 'c * ('c,_) rw_prot]
+  type ('a,'b) rw_prot
   type 'a ref constraint 'a = ('b,'c) rw_prot
   val ref  : 'a -> ('a,'b) rw_prot ref
-  val read  : ('a,[> `Read of 'a * 'b]) rw_prot ref -> 'a * ('a,'b) rw_prot ref
-  val write : ('a,[> `Write of 'b * ('b,'c) rw_prot]) rw_prot ref -> 'b -> ('b,'c) rw_prot ref
+  val read  : ('a,[ `Read of 'a * 'b]) rw_prot ref -> 'a * ('a,'b) rw_prot ref
+  val write : ('a,[ `Write of 'b * ('b,'c) rw_prot]) rw_prot ref -> 'b -> ('b,'c) rw_prot ref
   val branch : ('a, [>] as 'b) rw_prot ref -> (('a, [>] as 'c) rw_prot ref -> 'b) -> ('a, 'c) rw_prot ref
 end
 
 module PolyRef : PolyRef =
 struct
-  type ('a,'b) rw_prot constraint 'b = [> `Read of 'a * 'b | `Write of 'c * ('c,_) rw_prot]
+  type ('a,'b) rw_prot
 
   type 'a ref =
     {contents     : 'b.'b;
