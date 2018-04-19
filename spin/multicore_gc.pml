@@ -8,7 +8,11 @@ int ephe_cycle_in_domain[N];
 bool ephe_sweep;
 
 ltl p0 { (num_domains_to_sweep > 0) U ([] (num_domains_to_sweep == 0)) }
-ltl p1 { (num_domains_to_mark > 0) U ([] (num_domains_to_mark == 0)) }
+ltl p1 { (num_domains_to_ephe_sweep > 0) U ([] (num_domains_to_ephe_sweep == 0)) }
+ltl p2 { !ephe_sweep U ([] ephe_sweep) }
+ltl p3 { [] (ephe_cycle_in_domain[0] <= ephe_cycle) }
+ltl p4 { [] (ephe_sweep -> num_domains_to_mark == 0) }
+ltl p5 { [] (ephe_sweep -> ephe_cycle_in_domain[0] == ephe_cycle) }
 
 proctype major_slice (byte did) {
   bool sweep_done = false;
@@ -17,7 +21,7 @@ proctype major_slice (byte did) {
   bool ephe_sweep_done = false;
 
   //To model that there is a fixed amount of marking to do.
-  int mark_work_left = 256;
+  int ephemeron_depth = 256;
   byte i;
   bool done = false;
 
@@ -56,10 +60,10 @@ proctype major_slice (byte did) {
        :: ephe_cycle > ephe_cycle_in_domain[did] ->
              saved_ephe_cycle = ephe_cycle;
              if //epheMark
-             :: mark_work_left > 0 ->
+             :: ephemeron_depth > 0 ->
                  atomic { num_domains_to_mark++; };
                  mark_done = false;
-                 mark_work_left--;
+                 ephemeron_depth--;
                  goto again
              :: else
              fi;
@@ -88,7 +92,7 @@ proctype major_slice (byte did) {
               fi;
 							i++
         :: i == N -> break
-        od
+        od;
         if
         :: i == N && saved_ephe_cycle == ephe_cycle ->
               ephe_sweep = true
@@ -112,7 +116,7 @@ proctype major_slice (byte did) {
     :: else -> goto again
     fi
   }
-	:: else
+	:: else -> goto again
   fi
 }
 
