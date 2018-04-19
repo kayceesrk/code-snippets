@@ -7,8 +7,10 @@ int ephe_cycle;
 int ephe_cycle_in_domain[N];
 bool ephe_sweep;
 
+ltl p0 { (num_domains_to_sweep > 0) U ([] (num_domains_to_sweep == 0)) }
+ltl p1 { (num_domains_to_mark > 0) U ([] (num_domains_to_mark == 0)) }
 
-proctype major_slice (byte my_domain_id) {
+proctype major_slice (byte did) {
   bool sweep_done = false;
   bool mark_done = false;
   int saved_ephe_cycle;
@@ -31,6 +33,10 @@ proctype major_slice (byte my_domain_id) {
       atomic { num_domains_to_sweep--; };
       sweep_done = true
      }
+	:: else
+	fi;
+
+	if
   :: !mark_done -> {
       //Do mark
       if
@@ -40,28 +46,35 @@ proctype major_slice (byte my_domain_id) {
       atomic { num_domains_to_mark--; };
       mark_done = true;
      }
+	:: else
+	fi;
+
+	if
   :: num_domains_to_sweep == 0 &&
      num_domains_to_mark == 0 -> {
        if
-       :: ephe_cycle > ephe_cycle_in_domain[my_domain_id] ->
+       :: ephe_cycle > ephe_cycle_in_domain[did] ->
              saved_ephe_cycle = ephe_cycle;
              if //epheMark
              :: mark_work_left > 0 ->
                  atomic { num_domains_to_mark++; };
                  mark_done = false;
                  mark_work_left--;
-                 printf ("mark_work_left=%d\n", mark_work_left);
                  goto again
              :: else
              fi;
              if
              :: mark_done ->
-                 ephe_cycle_in_domain[my_domain_id] = saved_ephe_cycle;
+                 ephe_cycle_in_domain[did] = saved_ephe_cycle;
              :: else
              fi
        :: else
        fi
      }
+	:: else
+	fi;
+
+	if
   :: num_domains_to_sweep == 0 &&
      num_domains_to_mark == 0 &&
      !ephe_sweep -> {
@@ -72,7 +85,8 @@ proctype major_slice (byte my_domain_id) {
               if
               :: saved_ephe_cycle != ephe_cycle_in_domain[i] -> break
               :: else
-              fi
+              fi;
+							i++
         :: i == N -> break
         od
         if
@@ -81,6 +95,10 @@ proctype major_slice (byte my_domain_id) {
         :: else
         fi;
      }
+	:: else
+	fi;
+
+	if
   :: ephe_sweep -> {
     if
     :: !ephe_sweep_done ->
@@ -94,6 +112,7 @@ proctype major_slice (byte my_domain_id) {
     :: else -> goto again
     fi
   }
+	:: else
   fi
 }
 
