@@ -1,9 +1,9 @@
 /* Run as
      $ PROP=p% make ltl
-	 where % = 0 to 5.
+   where % = 0 to 5.
 */
-#define N 2
-#define EPHEMERON_DEPTH 8
+#define N 3
+#define EPHEMERON_DEPTH 2
 
 byte num_domains_to_mark;
 byte num_domains_to_sweep;
@@ -11,6 +11,8 @@ byte num_domains_to_ephe_sweep;
 int ephe_cycle;
 int ephe_cycle_in_domain[N];
 bool ephe_sweep;
+
+int num_mark_cycles;
 
 ltl p0 { <> ([] (num_domains_to_sweep == 0)) }
 ltl p1 { <> ([] (num_domains_to_ephe_sweep == 0)) }
@@ -35,7 +37,7 @@ proctype major_slice (byte did) {
   assert (num_domains_to_mark >= 0);
   assert (num_domains_to_sweep >= 0);
   assert (num_domains_to_ephe_sweep >= 0);
-	assert (ephemeron_depth >= 0);
+  assert (ephemeron_depth >= 0);
 
   if
   :: !sweep_done -> {
@@ -43,23 +45,24 @@ proctype major_slice (byte did) {
       atomic { num_domains_to_sweep--; };
       sweep_done = true
      }
-	:: else
-	fi;
+  :: else
+  fi;
 
-	if
+  if
   :: !mark_done -> {
       //Do mark
-      if
-      :: num_domains_to_mark == 1 -> atomic { ephe_cycle++ };
-      :: else
-      fi;
-      atomic { num_domains_to_mark--; };
+      atomic { ephe_cycle++ };
+      atomic { num_domains_to_mark--; i = num_domains_to_mark; };
+			if
+			:: i == 0 -> atomic { num_mark_cycles++; }
+			:: else
+			fi;
       mark_done = true;
      }
-	:: else
-	fi;
+  :: else
+  fi;
 
-	if
+  if
   :: num_domains_to_sweep == 0 &&
      num_domains_to_mark == 0 -> {
        if
@@ -81,10 +84,10 @@ proctype major_slice (byte did) {
        :: else
        fi
      }
-	:: else
-	fi;
+  :: else
+  fi;
 
-	if
+  if
   :: num_domains_to_sweep == 0 &&
      num_domains_to_mark == 0 &&
      !ephe_sweep -> {
@@ -92,23 +95,26 @@ proctype major_slice (byte did) {
         i = 0;
         do
         :: i < N ->
-              if
-              :: saved_ephe_cycle != ephe_cycle_in_domain[i] -> break
-              :: else
-              fi;
-							i++
-        :: i == N -> break
+						if
+						:: saved_ephe_cycle != ephe_cycle_in_domain[i] -> break
+						:: else
+						fi;
+						i++
+        :: i == N ->
+						assert (saved_ephe_cycle == ephe_cycle);
+						break
         od;
         if
-        :: i == N && saved_ephe_cycle == ephe_cycle ->
-              ephe_sweep = true
+        :: i == N -> //&& saved_ephe_cycle == ephe_cycle ->
+						assert (num_domains_to_mark == 0);
+						ephe_sweep = true
         :: else
         fi;
      }
-	:: else
-	fi;
+  :: else
+  fi;
 
-	if
+  if
   :: ephe_sweep -> {
     if
     :: !ephe_sweep_done ->
@@ -116,14 +122,17 @@ proctype major_slice (byte did) {
           atomic { num_domains_to_ephe_sweep--; }
     :: else
     fi;
-		//wait for other domains to finish ephe_sweep
+    //wait for other domains to finish ephe_sweep
     (num_domains_to_ephe_sweep == 0) -> done = true
   }
-	// wait for some domain to finish marking
-	:: else -> (num_domains_to_mark == 0) -> goto again
+  // wait for some domain to finish marking
+  :: else -> (num_domains_to_mark == 0) -> goto again
   fi;
 
-	assert (done)
+  printf ("ephe_cycle %d\n", ephe_cycle);
+  assert (ephe_cycle > 0);
+	assert (ephe_cycle >= num_mark_cycles);
+  assert (done)
 }
 
 init {
@@ -135,6 +144,7 @@ init {
   ephe_cycle = 0;
   ephe_sweep = false;
 
+  num_mark_cycles = 0;
   do
   :: i < N ->
        ephe_cycle_in_domain[i] = 0;
