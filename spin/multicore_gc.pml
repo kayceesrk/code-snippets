@@ -1,4 +1,5 @@
 #define N 2
+#define EPHEMERON_DEPTH 8
 
 byte num_domains_to_mark;
 byte num_domains_to_sweep;
@@ -7,9 +8,9 @@ int ephe_cycle;
 int ephe_cycle_in_domain[N];
 bool ephe_sweep;
 
-ltl p0 { (num_domains_to_sweep > 0) U ([] (num_domains_to_sweep == 0)) }
-ltl p1 { (num_domains_to_ephe_sweep > 0) U ([] (num_domains_to_ephe_sweep == 0)) }
-ltl p2 { !ephe_sweep U ([] ephe_sweep) }
+ltl p0 { <> ([] (num_domains_to_sweep == 0)) }
+ltl p1 { <> ([] (num_domains_to_ephe_sweep == 0)) }
+ltl p2 { <> ([] ephe_sweep) }
 ltl p3 { [] (ephe_cycle_in_domain[0] <= ephe_cycle) }
 ltl p4 { [] (ephe_sweep -> num_domains_to_mark == 0) }
 ltl p5 { [] (ephe_sweep -> ephe_cycle_in_domain[0] == ephe_cycle) }
@@ -21,7 +22,7 @@ proctype major_slice (byte did) {
   bool ephe_sweep_done = false;
 
   //To model that there is a fixed amount of marking to do.
-  int ephemeron_depth = 256;
+  int ephemeron_depth = EPHEMERON_DEPTH;
   byte i;
   bool done = false;
 
@@ -30,6 +31,7 @@ proctype major_slice (byte did) {
   assert (num_domains_to_mark >= 0);
   assert (num_domains_to_sweep >= 0);
   assert (num_domains_to_ephe_sweep >= 0);
+	assert (ephemeron_depth >= 0);
 
   if
   :: !sweep_done -> {
@@ -110,14 +112,14 @@ proctype major_slice (byte did) {
           atomic { num_domains_to_ephe_sweep--; }
     :: else
     fi;
-    if
-    :: num_domains_to_ephe_sweep == 0 ->
-         progress: done = true
-    :: else -> goto again
-    fi
+		//wait for other domains to finish ephe_sweep
+    (num_domains_to_ephe_sweep == 0) -> done = true
   }
-	:: else -> goto again
-  fi
+	// wait for some domain to finish marking
+	:: else -> (num_domains_to_mark == 0) -> goto again
+  fi;
+
+	assert (done)
 }
 
 init {
@@ -127,13 +129,14 @@ init {
   num_domains_to_sweep = N;
   num_domains_to_ephe_sweep = N;
   ephe_cycle = 0;
+  ephe_sweep = false;
+
   do
   :: i < N ->
        ephe_cycle_in_domain[i] = 0;
        i++;
   :: i == N -> break
   od;
-  ephe_sweep = false;
 
   atomic {
     i = 0;
