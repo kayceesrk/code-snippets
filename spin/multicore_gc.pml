@@ -2,7 +2,7 @@
      $ PROP=p% make ltl
    where % = 0 to 5.
 */
-#define N 2
+#define N 3
 #define EPHEMERON_DEPTH 2
 
 byte num_domains_to_mark;
@@ -30,7 +30,6 @@ proctype major_slice (byte did) {
   byte i;
   bool done = false;
 
-  again:
 
   assert (num_domains_to_mark >= 0);
   assert (num_domains_to_sweep >= 0);
@@ -46,6 +45,7 @@ proctype major_slice (byte did) {
   :: else
   fi;
 
+  again:
   if
   :: !mark_done -> {
       //Do mark
