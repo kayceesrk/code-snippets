@@ -1,3 +1,7 @@
+/* Run as
+     $ PROP=p% make ltl
+	 where % = 0 to 5.
+*/
 #define N 2
 #define EPHEMERON_DEPTH 8
 
