@@ -13,7 +13,7 @@ typedef struct {
   value old_data;
 } ephe_clean_descriptor_t;
 
-/* Clean the data for dead key */
+/* Clean the data for dead key. Has a single linearlization point. */
 int ephe_clean (ephe_clean_descriptor_t *d) {
   assert (Is_dead(d->old_key));
   d->old_data = *(d->data);
