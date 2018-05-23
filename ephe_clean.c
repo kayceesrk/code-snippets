@@ -21,13 +21,13 @@ void ephe_clean (ephe_clean_descriptor_t *d) {
   d->old_data = *(d->data);
   /* d->data might have been updated by the mnutator in the mean time. As long
    * as the key remains the old_key, the new data will be released. */
-  if (!__sync_bool_compare_and_swap (d->data, d->old_data, d)) {
+  if (!__sync_bool_compare_and_swap (d->data, d->old_data, d)) { //Linearization point.
     /* data updated. try again to avoid losing writes to data. */
     return ephe_clean(d);
   }
   k = *(d->key);
   if (k == d->old_key) {
-    if (!__sync_bool_compare_and_swap (d->data, d, None_val)) { //Linearization point.
+    if (!__sync_bool_compare_and_swap (d->data, d, None_val)) {
       /* data updated. try again to avoid losing writes to data. */
       return ephe_clean(d);
     }
