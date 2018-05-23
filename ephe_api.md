@@ -1,6 +1,6 @@
 ## Biased Ephemerons
 
-Ephemerons biased to domains.
+Basic API calls for ephemerons biased to domains.
 
 ### Structure
 
@@ -18,12 +18,12 @@ Assume `void promote (value* p)` which promotes `*p` to the major heap and
 updates `p` to point to the new location.
 
 ```c
-value _get_key (value e, int i, int is_rpc) {
+value _get_key (value e, value i, int is_rpc) {
   domain* me = current_domain ();
   domain* owner = Op_val(e)[Ephe_domain];
   if (owner == me) {
     if (gc_phase == EpheSweep) ephe_clean(e);
-    value *kp = &Op_val(e)[i + Ephe_first_key];
+    value *kp = &Op_val(e)[Long_val(i) + Ephe_first_key];
     if (is_rpc) promote(kp);
     return *kp;
   } else {
@@ -31,16 +31,16 @@ value _get_key (value e, int i, int is_rpc) {
   }
 }
 
-value get_key (value e, int i) {
+value get_key (value e, value i) {
   return _get_key(e,i,0);
 }
 
-value set_key (value e, int i, value k) {
+value set_key (value e, value i, value k) {
   domain* me = current_domain ();
   domain* owner = Op_val(e)[Ephe_domain];
   if (owner = me) {
     if (gc_phase == EpheSweep) ephe_clean(e);
-    Op_val(e)[i + Ephe_first_key] = k;
+    Op_val(e)[Long_val(i) + Ephe_first_key] = k;
   } else {
     promote (&k);
     rpc (owner, fun () -> set_key(e,i,k));
