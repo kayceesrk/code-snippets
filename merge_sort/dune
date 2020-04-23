@@ -1,0 +1,4 @@
+(test
+  (name merge_sort)
+	(ocamlopt_flags -O3 :standard)
+	(libraries unix))
