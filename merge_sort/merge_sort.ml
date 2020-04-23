@@ -1,8 +1,15 @@
 let n = try int_of_string Sys.argv.(1) with _ -> 1024
 let min = 128
+
+let _ = Random.init 42
 let a = Array.init n (fun _ -> Random.int n)
 let b = Array.make n 0
+
+let _ = Random.init 42
 let c = List.init n (fun _ -> Random.int n)
+
+let _ = Random.init 42
+let d = Array.init n (fun _ -> Random.int n)
 
 type array_slice = {arr: int array; index: int; length: int}
 
@@ -73,11 +80,20 @@ let rec merge_sort a b l =
 let _ =
   let aslice = {arr = a; index = 0; length = n} in
   let bslice = {arr = b; index = 0; length = n} in
+
   Gc.full_major ();
   let s = Unix.gettimeofday () in
   let _r = merge_sort aslice bslice 0 in
-  Printf.printf "double buffered merge sort = %f\n" (Unix.gettimeofday() -. s);
+  Printf.printf "double buffered merge sort = %f\n%!" (Unix.gettimeofday() -. s);
+
+  Gc.full_major ();
+  let s = Unix.gettimeofday () in
+  Array.sort (-) d;
+  Printf.printf "Array.sort = %f\n%!" (Unix.gettimeofday() -. s);
+
   Gc.full_major ();
   let s = Unix.gettimeofday () in
   let _c = List.sort (-) c in
-  Printf.printf "List.sort = %f\n" (Unix.gettimeofday() -. s)
+  Printf.printf "List.sort = %f\n%!" (Unix.gettimeofday() -. s);
+
+
