@@ -3,7 +3,6 @@ let min = 128
 
 let _ = Random.init 42
 let a = Array.init n (fun _ -> Random.int n)
-let b = Array.make n 0
 
 let _ = Random.init 42
 let c = List.init n (fun _ -> Random.int n)
@@ -77,13 +76,18 @@ let rec merge_sort a b l =
       a
     end
 
+let merge_sort arr =
+  let n = Array.length arr in
+  let buffer = Array.make n 0 in
+  let aslice = {arr = arr; index = 0; length = n} in
+  let bslice = {arr = buffer; index = 0; length = n} in
+  merge_sort aslice bslice 0
+
 let _ =
-  let aslice = {arr = a; index = 0; length = n} in
-  let bslice = {arr = b; index = 0; length = n} in
 
   Gc.full_major ();
   let s = Unix.gettimeofday () in
-  let _r = merge_sort aslice bslice 0 in
+  let _r = merge_sort a in
   Printf.printf "double buffered merge sort = %f\n%!" (Unix.gettimeofday() -. s);
 
   Gc.full_major ();

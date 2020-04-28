@@ -1,0 +1,8 @@
+(executable
+  (name par_init)
+	(modules par_init)
+	(libraries domainslib))
+
+(executable
+  (name seq_init)
+	(modules seq_init))
