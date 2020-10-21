@@ -1,7 +1,7 @@
 all: test2.exe
 
 test2_.o: test2_.cpp
-	g++ -g -I $(shell opam var lib)/ocaml -c test2_.cpp
+	clang++ -g -I $(shell opam var lib)/ocaml -c test2_.cpp
 
 test2.exe: test2_.o
 	ocamlopt -ccopt -lc++ -ccopt -Wl,-keep_dwarf_unwind -g -o test2.exe test2.ml test2_.o
