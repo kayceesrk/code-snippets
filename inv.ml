@@ -1,4 +1,5 @@
 let (|>) f v = f v
+
 module type MT = sig
   type ('a,'b) t
   val write : ('a,'b) t -> 'a -> ('a, [`Write of 'b]) t
