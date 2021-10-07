@@ -1,3 +1,7 @@
 open Obj.Effect_handlers
 
-type _ eff += Fork : (unit -> 'a) -> 'a list eff
+module Promise : sig
+  type 'a t
+end 
+
+type _ eff += Fork : (unit -> 'a) -> 'a Promise.t eff
