@@ -1,3 +1,5 @@
+open EffectHandlers
+
 type 'a mv_state =
   | Full  of 'a * ('a * unit Sched.resumer) Queue.t
   | Empty of 'a Sched.resumer Queue.t
@@ -8,9 +10,9 @@ let create_empty () = ref (Empty (Queue.create ()))
 
 let create v = ref (Full (v, Queue.create ()))
 
-let put suspend v mv =
+let put v mv =
   match !mv with
-  | Full (v', q) -> suspend (fun r -> Queue.push (v,r) q)
+  | Full (v', q) -> perform (Sched.Suspend (fun r -> Queue.push (v,r) q))
   | Empty q ->
       if Queue.is_empty q then
         mv := Full (v, Queue.create ())
@@ -18,9 +20,9 @@ let put suspend v mv =
         let resume = Queue.pop q in
         resume v
 
-let take suspend mv =
+let take mv =
   match !mv with
-  | Empty q -> suspend (fun r -> Queue.push r q)
+  | Empty q -> perform (Sched.Suspend (fun r -> Queue.push r q))
   | Full (v, q) ->
       if Queue.is_empty q then
         (mv := Empty (Queue.create ()); v)

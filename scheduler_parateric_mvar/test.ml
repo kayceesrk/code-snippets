@@ -12,12 +12,12 @@ let main () =
     L.run (fun () ->
       L.fork (fun _ ->
         Printf.printf "Thread in Lifo scheduler taking from MVar\n";
-        let v = MVar.take L.suspend m in
+        let v = MVar.take m in
         Printf.printf "Thread in Lifo scheduler took %d from MVar\n" v);
       F.fork (fun _ ->
         let v = 42 in
         Printf.printf "Thread in Fifo scheduler putting %d into MVar\n" v;
-        MVar.put F.suspend v m)))
+        MVar.put v m)))
   in
   match_with comp ()
   { retc = (fun () -> ());

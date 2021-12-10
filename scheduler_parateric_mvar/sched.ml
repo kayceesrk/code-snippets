@@ -1,4 +1,5 @@
 open EffectHandlers
+
 type 'a resumer = 'a -> unit
-type 'a suspender = ('a resumer -> unit) -> 'a
 type _ eff += Stuck : unit eff
+type _ eff += Suspend : ('a resumer -> unit) -> 'a eff
