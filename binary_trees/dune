@@ -4,6 +4,12 @@
 	(ocamlopt_flags (:standard -O3)))
 
 (executable
+  (name binarytrees5_multicore)
+	(modules binarytrees5_multicore)
+	(libraries domainslib)
+	(ocamlopt_flags (:standard -O3)))
+
+(executable
   (name binarytrees_parallel2)
 	(modules binarytrees_parallel2)
 	(libraries domainslib)
