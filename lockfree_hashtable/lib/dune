@@ -1,0 +1,3 @@
+(library
+ (name lockfree_hashtable)
+ (modules lf_hashtbl))
