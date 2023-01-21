@@ -1,0 +1,7 @@
+(executable
+  (name generator)
+  (modules generator))
+
+(executable
+  (name chameneos)
+  (modules chameneos sched MVar))
