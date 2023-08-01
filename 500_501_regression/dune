@@ -1,0 +1,7 @@
+(executable
+  (name test1)
+	(modules test1))
+
+(executable
+  (name test2)
+	(modules test2))
