@@ -1,6 +1,7 @@
 all:
 	make bench-test2-500
 	make bench-test2-501
+	make tabulate
 
 tabulate:
 	csvstack -g 5.0.0,5.1.0~beta1 -n compiler bench-test2-500.csv bench-test2-501.csv > data1.csv
@@ -20,4 +21,4 @@ bench-test2-%:
 
 clean:
 	dune clean
-	rm -f *~
+	rm -f *.csv *~

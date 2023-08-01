@@ -4,14 +4,9 @@ let bytearray_size = int_of_string Sys.argv.(3)
 let dom0_is_worker = bool_of_string Sys.argv.(4)
 
 let work () =
-  let rec loop i =
-    if i = num_iters then ()
-    else begin
+  for _i=1 to num_iters do
       ignore @@ Bytes.create bytearray_size;
-      loop (i+1)
-    end
-  in
-  loop 0
+  done
 
 let main () =
   let nd =
