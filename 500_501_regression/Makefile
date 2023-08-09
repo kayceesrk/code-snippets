@@ -1,17 +1,13 @@
-all-%:
+all:
+	make do-test1
+	make do-test2
+
+do-%:
 	make clean
 	make bench-$*-500
 	make bench-$*-501
 	make tabulate-$*
 	make plot-$*
-
-plot-%:
-	python3 plot.py $*
-
-tabulate-%:
-	csvstack -g 5.0.0,5.1.0~beta1 -n compiler bench-$*-500.csv bench-$*-501.csv > data1.csv
-	csvsql --query "select parameter_domains,mean,compiler,parameter_dom0_is_worker from data1" data1.csv > data.csv
-	rm data1.csv
 
 bench-test1-%:
 	make $(subst bench-test1-,,$@)
@@ -31,6 +27,14 @@ bench-test2-%:
 	opam exec --switch=5.1.0~beta1 -- dune clean
 	opam exec --switch=5.1.0~beta1 -- dune build
 
+tabulate-%:
+	csvstack -g 5.0.0,5.1.0~beta1 -n compiler bench-$*-500.csv bench-$*-501.csv > data1.csv
+	csvsql --query "select parameter_domains,mean,compiler,parameter_dom0_is_worker from data1" data1.csv > data.csv
+	rm data1.csv
+
+plot-%:
+	python3 plot.py $*
+
 clean:
 	dune clean
-	rm -f *.csv *~ op *.data *.png
+	rm -f *.csv *~ op *.data *.old *.out *.o *.exe
