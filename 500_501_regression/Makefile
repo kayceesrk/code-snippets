@@ -37,4 +37,4 @@ plot-%:
 
 clean:
 	dune clean
-	rm -f *.csv *~ op *.data *.old *.out *.o *.exe
+	rm -rf *.csv *~ op *.data *.old *.out *.o *.exe r*hs
