@@ -1,18 +1,13 @@
 ## Binary trees
 
-Parallel version of the [binarytrees
-benchmark](https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/binarytrees.html#binarytrees)
-in Multicore OCaml.
-
-## Prerequisites
-
-```bash
-$ opam switch create 4.12.0+domains+effects
-$ opam install domainslib
+```
+$ opam switch create 5.1.0
+$ opam install dune domainslib
+$ dune build ./binarytrees.exe
 ```
 
-## Build and run
+### Space overhead
 
-```bash
-$ make run
+```
+for i in 60 80 100 120 140 160; do OCAMLRUNPARAM="v=0x400,o=$i" ./_build/default/binarytrees.exe 20 2>&1 | grep "top_heap_words"; done
 ```

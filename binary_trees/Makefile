@@ -10,4 +10,4 @@ run: build
 
 clean:
 	dune clean
-	rm *~
+	rm 0f *~
