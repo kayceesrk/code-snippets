@@ -1,0 +1,8 @@
+(executable
+  (name test1)
+	(modules test1)
+	(libraries unix))
+
+(executable
+  (name test2)
+	(modules test2))
