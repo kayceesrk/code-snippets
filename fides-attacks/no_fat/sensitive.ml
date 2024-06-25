@@ -3,7 +3,9 @@ module F () = struct
   let is_admin () = !admin_flag
 end
 
-module M = F ()
+module M : sig
+  val is_admin : unit -> bool
+end = F ()
 
 let _ = Callback.register "is_admin" M.is_admin
 
