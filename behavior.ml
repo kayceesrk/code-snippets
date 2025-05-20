@@ -81,9 +81,12 @@ let my_ref2 : (int, [`Write of [`Read of [`Stop]]]) Ref.ref = Ref.ref 10
  *        These two variant types have no intersection
  *)
 
-let my_ref3 : (int, [`Write of [`Read of [>]]]) Ref.ref = Ref.ref 10
-(* my_ref3 must be written and read once and then any subsequent operation can be performed! *)
-(* let _ = foo2 my_ref3 (* foo2 accepts my_ref3, and runs forever! *) *)
+let test () =
+  let my_ref3 : (int, [`Write of [`Read of [>]]]) Ref.ref = Ref.ref 10 in
+  (* [my_ref3] must be written and read once and then any subsequent operation
+     can be performed! *)
+  let _ = foo2 my_ref3 in (* foo2 accepts my_ref3, and runs forever! *)
+  ()
 
 let rec foo3 r = function
   | 0 ->
@@ -104,8 +107,9 @@ let rec foo3 r = function
  * always of the form << fun x -> `Tag x >>.
  *)
 
-let my_ref4 = Ref.ref 10
-let _ = foo3 my_ref4 32
+let test () =
+  let my_ref4 = Ref.ref 10 in
+  foo3 my_ref4 32
 (* Works as expected *)
 
 module type File_descriptor = sig
