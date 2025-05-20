@@ -46,7 +46,8 @@ let foo1 r =
    (int, [ `Write of [ `Read of [>  ] as 'a ] ]) Ref.ref @ unique ->
    int Modes.Aliased.t * (int, 'a) Ref.ref
 
-   The type says that [foo1] first writes and then reads the reference. *)
+   The type says that [foo1] first writes and then reads the reference. 
+   This may be followed by any action. *)
 
 let v, res_ref =
   (* This reference can only be written once followed by a single read *)
