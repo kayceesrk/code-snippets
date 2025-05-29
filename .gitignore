@@ -2,3 +2,6 @@
 *.swp
 *.cmx
 *.cmo
+*.cmi
+*.o
+_build
