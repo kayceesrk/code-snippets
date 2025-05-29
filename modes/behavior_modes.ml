@@ -26,7 +26,7 @@ struct
 
   let ref : 'a -> ('a, 'b) ref @ unique = fun v -> unique_ {contents = v}
 
-  let read (r @ unique) : _ @ unique =
+  let read : _ @ unique -> _ @ unique = fun r ->
     let c = Modes.Aliased.{aliased = r.contents} in
     c, {contents = r.contents}
 
@@ -46,12 +46,12 @@ let foo1 r =
    (int, [ `Write of [ `Read of [>  ] as 'a ] ]) Ref.ref @ unique ->
    int Modes.Aliased.t * (int, 'a) Ref.ref
 
-   The type says that [foo1] first writes and then reads the reference. 
+   The type says that [foo1] first writes and then reads the reference.
    This may be followed by any action. *)
 
 let v, res_ref =
   (* This reference can only be written once followed by a single read *)
-  let my_ref1 : (int, [`Write of [`Read of [`Stop]]]) Ref.ref @ unique = Ref.ref 10 in
+  let my_ref1 : (int, [`Write of [`Read of [`Stop]]]) Ref.ref @@ unique = Ref.ref 10 in
   foo1 my_ref1
 
 (*
@@ -71,7 +71,7 @@ let rec foo2 r =
    Of course, this loops forever. *)
 
 let _ =
-  let my_ref2 : (int, [`Write of [`Read of [`Stop]]]) Ref.ref @ unique = Ref.ref 10 in
+  let my_ref2 : (int, [`Write of [`Read of [`Stop]]]) Ref.ref @@ unique = Ref.ref 10 in
 (*   foo2 my_ref2; (* UNCOMMENT TO SEE ERROR *) *)
   ignore my_ref2
 

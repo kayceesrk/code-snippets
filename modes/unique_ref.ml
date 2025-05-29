@@ -10,10 +10,10 @@ module M : S = struct
   type 'a t = { mutable value : 'a }
   let alloc x = unique_ { value = x }
   let free t = ()
-  let get (t @ unique) : _ Modes.Aliased.t * _ @ unique =
+  let get t =
     let a = Modes.Aliased.{aliased = t.value } in
     a, t
-  let set (t @ unique) x =
+  let set t x =
     t.value <- x;
     t
 end
