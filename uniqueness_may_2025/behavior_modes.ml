@@ -24,9 +24,9 @@ struct
 
   type ('a, 'b) ref = {mutable contents : 'a} constraint 'b = [>]
 
-  let ref : 'a -> ('a, 'b) ref @ unique = fun v -> {contents = v}
+  let ref v = {contents = v}
 
-  let read : _ @ unique -> _ @ unique = fun r ->
+  let read r =
     let c = Modes.Aliased.{aliased = r.contents} in
     c, Obj.magic_at_unique r
 
