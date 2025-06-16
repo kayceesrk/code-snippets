@@ -1,6 +1,6 @@
 # OxCaml Parallel
 
-Experimenting with [OxCaml Parallel](https://github.com/janestreet/parallel)
+Experimenting with [OxCaml Parallel](https://github.com/janestreet/parallel).
 
 ## Running the benchmarks
 
