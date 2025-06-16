@@ -18,13 +18,12 @@ let fib_sequential n =
   Parallel.Scheduler.Sequential.schedule scheduler ~monitor ~f:(fun parallel ->
     printf "%d\n" (fib parallel n))
 
-let fib_parallel nd (n:int) =
+let fib_parallel (module S : Parallel.Scheduler.S_async) nd (n:int) =
   let monitor = Parallel.Monitor.create_root () in
-  let module WS = Parallel_scheduler_work_stealing in
-  let scheduler = WS.create ~domains:nd () in
-  WS.schedule scheduler ~monitor ~f:(fun parallel ->
+  let scheduler = S.create ~domains:nd () in
+  S.schedule scheduler ~monitor ~f:(fun parallel ->
     printf "%d\n" (fib parallel n));
-  WS.stop scheduler
+  S.stop scheduler
 
 
 let process_command_line () =
@@ -32,14 +31,18 @@ let process_command_line () =
   | "sequential" ->
     let n = int_of_string Sys.argv.(2) in
     fib_sequential n
-  | "parallel" ->
+  | "work_stealing" ->
     let nd = int_of_string Sys.argv.(2) in
     let n = int_of_string Sys.argv.(3) in
-    fib_parallel nd n
+    fib_parallel (module Parallel_scheduler_work_stealing) nd n
+  | "stack" ->
+    let nd = int_of_string Sys.argv.(2) in
+    let n = int_of_string Sys.argv.(3) in
+    fib_parallel (module Parallel_scheduler_stack) nd n
   | _ -> raise (Invalid_argument "Unexpected command line argument")
 
 let () =
   try process_command_line () with
   | _ ->
-    eprintf "Usage: %s sequential <n> | parallel <nd> <n>\n" Sys.argv.(0);
+    eprintf "Usage: %s sequential <n> | work_stealing <nd> <n> | stack <nd> <n>\n" Sys.argv.(0);
     exit 1

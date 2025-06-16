@@ -1,5 +1,5 @@
 (executable
  (name test_fib)
- (libraries parallel stdio parallel.scheduler.work_stealing)
+ (libraries parallel stdio parallel.scheduler.work_stealing parallel.scheduler.stack)
 )
 
