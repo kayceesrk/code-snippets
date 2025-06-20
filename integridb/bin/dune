@@ -1,0 +1,4 @@
+(executable
+ (public_name integridb)
+ (name main)
+ (libraries integridb))

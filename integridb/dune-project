@@ -1,0 +1,26 @@
+(lang dune 3.19)
+
+(name integridb)
+
+(generate_opam_files true)
+
+(source
+ (github YuktaNidhi/Integridb))
+
+(authors "YuktaNidhi <yuktanidhi15@gmail.com>")
+
+(maintainers "YuktaNidhi <yuktanidhi15@gmail.com>")
+
+(license MIT)
+
+(documentation https://url/to/documentation)
+
+(package
+ (name integridb)
+ (synopsis "A short synopsis")
+ (description "A longer description")
+ (depends digestif)
+ (tags
+  ("add topics" "to describe" your project)))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html

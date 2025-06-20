@@ -1,0 +1,3 @@
+(library
+ (name integridb)
+ (libraries digestif))

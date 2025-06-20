@@ -4,7 +4,7 @@ all: build
 		'dune exec ./test_fib.exe {config}'
 
 build:
-	dune build
+	dune build --profile=release
 
 clean:
 	dune clean
